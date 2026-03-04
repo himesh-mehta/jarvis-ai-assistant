@@ -53,7 +53,7 @@ export const Header = ({ openAnalytics }: { openAnalytics: () => void }) => {
 
                 <div className="h-6 w-[1px] bg-white/10 mx-2" />
 
-                <Link href="/login">
+                <Link href="/signup">
                     <Button
                         variant="outline"
                         size="sm"
