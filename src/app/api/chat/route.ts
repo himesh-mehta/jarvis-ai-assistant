@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import Groq from 'groq-sdk';
-import { connectDB } from '@/app/lib/mongodb';
-import Chat from '@/app/lib/models/ChatModel';
+import { connectDB } from '../../lib/mongodb';
+import Chat from '../../lib/models/ChatModel';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/lib/mongodb';
-import Chat from '@/app/lib/models/ChatModel';
+import { connectDB } from '../../lib/mongodb';
+import Chat from '../../lib/models/ChatModel';
 
 export async function GET(req: NextRequest) {
     const sessionId = req.nextUrl.searchParams.get('sessionId');

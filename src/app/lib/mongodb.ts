@@ -14,6 +14,7 @@ export async function connectDB() {
   }
 
   cached.conn = await cached.promise;
+  console.log('Successfully connected to MongoDB');
   (global as any).mongoose = cached;
   return cached.conn;
 }
