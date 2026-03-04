@@ -35,26 +35,17 @@ interface Message {
     responseTime?: string;
 }
 
-export const ChatInterface = () => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: "1",
-            role: "assistant",
-            content: "# Welcome to Antigravity AI\n\nI am your advanced intelligence platform. How can I assist your mission today?\n\n- **Web Mode**: Enabled\n- **Code Engine**: Optimized\n- **Creative Brain**: Active",
-            timestamp: "23:20",
-            tokens: 42,
-            responseTime: "0.4s"
-        },
-        {
-            id: "2",
-            role: "user",
-            content: "Can you explain how gravity distortion works in quantum field theory?",
-            timestamp: "23:21"
-        }
-    ]);
+interface Message {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    timestamp: string;
+    tokens?: number;
+    responseTime?: string;
+}
 
-    const [isThinking, setIsThinking] = useState(false);
+export const ChatInterface = ({ messages, isThinking }: { messages: Message[], isThinking: boolean }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (scrollRef.current) {

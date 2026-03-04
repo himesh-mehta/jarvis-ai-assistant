@@ -24,7 +24,15 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-export const InputPanel = ({ openControls }: { openControls: () => void }) => {
+export const InputPanel = ({
+    openControls,
+    onSend,
+    isLoading
+}: {
+    openControls: () => void;
+    onSend: (content: string) => void;
+    isLoading: boolean;
+}) => {
     const [input, setInput] = useState("");
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -35,10 +43,16 @@ export const InputPanel = ({ openControls }: { openControls: () => void }) => {
         }
     }, [input]);
 
+    const handleSend = () => {
+        if (!input.trim() || isLoading) return;
+        onSend(input);
+        setInput("");
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            // handle send
+            handleSend();
         }
     };
 
@@ -56,6 +70,7 @@ export const InputPanel = ({ openControls }: { openControls: () => void }) => {
                             onKeyDown={handleKeyDown}
                             placeholder="Ask anything to Antigravity..."
                             className="min-h-[60px] w-full bg-transparent border-none focus-visible:ring-0 resize-none text-base py-3 px-4 placeholder:text-white/20"
+                            disabled={isLoading}
                         />
 
                         <div className="flex items-center justify-between px-2 pb-2">
@@ -79,15 +94,20 @@ export const InputPanel = ({ openControls }: { openControls: () => void }) => {
                                 </Button>
 
                                 <Button
-                                    disabled={!input.trim()}
+                                    onClick={handleSend}
+                                    disabled={!input.trim() || isLoading}
                                     className={cn(
                                         "h-10 w-10 rounded-full transition-all duration-300",
-                                        input.trim()
+                                        input.trim() && !isLoading
                                             ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105"
                                             : "bg-white/5 text-white/20 border border-white/10"
                                     )}
                                 >
-                                    <ArrowUp className="w-5 h-5" />
+                                    {isLoading ? (
+                                        <Sparkles className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <ArrowUp className="w-5 h-5" />
+                                    )}
                                 </Button>
                             </div>
                         </div>
