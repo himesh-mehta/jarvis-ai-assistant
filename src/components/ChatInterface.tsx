@@ -45,21 +45,25 @@ interface Message {
 }
 
 export const ChatInterface = ({ messages, isThinking }: { messages: Message[], isThinking: boolean }) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const [autoScroll, setAutoScroll] = useState(true);
 
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-                top: scrollRef.current.scrollHeight,
-                behavior: "smooth"
+        if (autoScroll && bottomRef.current) {
+            bottomRef.current.scrollIntoView({
+                behavior: "smooth",
+                block: "end",
             });
         }
-    }, [messages, isThinking]);
+    }, [messages, isThinking, autoScroll]);
 
     return (
         <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden">
-            <ScrollArea className="flex-1 px-4 lg:px-8 py-6" ref={scrollRef}>
-                <div className="max-w-4xl mx-auto space-y-8">
+            <ScrollArea
+                className="flex-1 px-4 lg:px-8 py-6"
+                onWheel={() => setAutoScroll(false)} // Stop auto-scroll on manual scroll
+            >
+                <div className="max-w-4xl mx-auto space-y-8 pb-10">
                     <AnimatePresence initial={false}>
                         {messages.map((message) => (
                             <MessageItem key={message.id} message={message} />
@@ -101,6 +105,7 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                             </div>
                         </motion.div>
                     )}
+                    <div ref={bottomRef} className="h-4" />
                 </div>
             </ScrollArea>
         </div>

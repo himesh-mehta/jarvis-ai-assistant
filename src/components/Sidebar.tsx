@@ -66,6 +66,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings }: SidebarPr
         <motion.aside
             initial={false}
             animate={{ width: isCollapsed ? 80 : 280 }}
+            data-slot="sidebar"
             className={cn(
                 "h-screen glass-dark border-r border-white/10 flex flex-col relative z-50",
                 isCollapsed ? "items-center" : ""
@@ -111,7 +112,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings }: SidebarPr
             {/* Navigation / History */}
             <ScrollArea className="flex-1 px-3">
                 {!isCollapsed && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pb-20">
                         <div>
                             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2 mb-2">Pinned</p>
                             <div className="space-y-1">

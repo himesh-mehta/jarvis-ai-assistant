@@ -129,7 +129,7 @@ export default function Home() {
 
         <StatusIndicator />
       </div>
-      ...
+
 
       {/* Overlays / Modals */}
       <AdvancedControls
