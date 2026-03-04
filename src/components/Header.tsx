@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 export const Header = ({ openAnalytics }: { openAnalytics: () => void }) => {
     return (
@@ -49,6 +50,18 @@ export const Header = ({ openAnalytics }: { openAnalytics: () => void }) => {
                 <Button variant="ghost" size="icon" className="text-white/40 hover:text-white">
                     <Share2 className="w-5 h-5" />
                 </Button>
+
+                <div className="h-6 w-[1px] bg-white/10 mx-2" />
+
+                <Link href="/login">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-neon-blue/5 border-neon-blue/30 text-neon-blue hover:bg-neon-blue/10 rounded-full px-4 h-9 font-mono text-xs uppercase tracking-wider"
+                    >
+                        Join Protocol
+                    </Button>
+                </Link>
             </div>
         </header>
     );

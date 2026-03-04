@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -196,7 +197,17 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings }: SidebarPr
                             <p className="text-[10px] text-white/40 truncate">Pro Plan</p>
                         </div>
                     )}
-                    {!isCollapsed && <Settings className="w-4 h-4 text-white/40 group-hover:text-white" onClick={(e) => { e.stopPropagation(); openSettings(); }} />}
+                    {!isCollapsed && (
+                        <div className="flex items-center gap-2">
+                            <Settings
+                                className="w-4 h-4 text-white/40 hover:text-white transition-colors"
+                                onClick={(e) => { e.stopPropagation(); openSettings(); }}
+                            />
+                            <Link href="/login">
+                                <LogOut className="w-4 h-4 text-white/40 hover:text-red-400 transition-colors" />
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </div>
         </motion.aside>

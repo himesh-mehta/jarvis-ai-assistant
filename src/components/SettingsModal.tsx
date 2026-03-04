@@ -134,7 +134,13 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     );
 };
 
-const TabTrigger = ({ value, icon, label }: any) => (
+interface TabTriggerProps {
+    value: string;
+    icon: React.ReactNode;
+    label: string;
+}
+
+const TabTrigger = ({ value, icon, label }: TabTriggerProps) => (
     <TabsTrigger
         value={value}
         className="w-full justify-start gap-3 px-4 py-2 text-white/40 data-[state=active]:text-white data-[state=active]:bg-white/10 transition-all text-xs font-medium border-none"

@@ -8,7 +8,7 @@ import { Header, StatusIndicator } from "@/components/Header";
 import { AdvancedControls } from "@/components/AdvancedControls";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { SettingsModal } from "@/components/SettingsModal";
-import { ParticleBackground } from "@/components/ParticleBackground";
+import ParticleBackground from "@/components/ParticleBackground";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Home() {
