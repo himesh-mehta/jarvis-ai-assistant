@@ -60,10 +60,33 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
     return (
         <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden">
             <ScrollArea
-                className="flex-1 px-4 lg:px-8 py-6"
+                className="flex-1 px-4 lg:px-8 py-6 no-scrollbar"
                 onWheel={() => setAutoScroll(false)} // Stop auto-scroll on manual scroll
             >
                 <div className="max-w-4xl mx-auto space-y-8 pb-10">
+                    {messages.length === 0 ? (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8 }}
+                            className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+                        >
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-600/10 flex items-center justify-center border border-white/5 mb-8 group hover:border-blue-500/30 transition-all duration-500">
+                                <Sparkles className="w-8 h-8 text-blue-400 group-hover:scale-110 transition-transform" />
+                            </div>
+                            <h1 className="text-5xl font-bold tracking-tighter text-white mb-3">JARVIS</h1>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="pt-2 pb-12 flex items-center justify-center"
+                        >
+                            <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm">
+                                <span className="text-[10px] font-bold tracking-[0.3em] text-white/20 uppercase pl-[0.3em]">JARVIS</span>
+                            </div>
+                        </motion.div>
+                    )}
                     <AnimatePresence initial={false}>
                         {messages.map((message) => (
                             <MessageItem key={message.id} message={message} />
@@ -78,12 +101,12 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                         >
                             <Avatar className="w-8 h-8 neon-border animate-pulse">
                                 <AvatarImage src="/logo.png" />
-                                <AvatarFallback className="bg-blue-950 text-blue-300">AG</AvatarFallback>
+                                <AvatarFallback className="bg-blue-950 text-blue-300">JV</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col gap-2">
                                 <p className="text-sm font-medium text-white/40 italic flex items-center gap-2">
                                     <Sparkles className="w-3 h-3 animate-spin" />
-                                    Antigravity is thinking...
+                                    JARVIS is thinking...
                                 </p>
                                 <div className="flex gap-1">
                                     <motion.span
@@ -138,7 +161,7 @@ const MessageItem = ({ message }: { message: Message }) => {
                 isUser ? "neon-border" : "border border-neon-blue/30"
             )}>
                 <AvatarFallback className={isUser ? "bg-purple-950 text-purple-200" : "bg-blue-950 text-blue-200"}>
-                    {isUser ? "AM" : "AG"}
+                    {isUser ? "AM" : "JV"}
                 </AvatarFallback>
             </Avatar>
 

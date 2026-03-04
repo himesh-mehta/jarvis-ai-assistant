@@ -62,7 +62,7 @@ export const AnalyticsDashboard = ({ isOpen, onClose }: { isOpen: boolean; onClo
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold tracking-tight">Intelligence Analytics</h2>
-                                    <p className="text-xs text-white/40 font-mono uppercase tracking-widest">Model: Antigravity Platinum v2.4</p>
+                                    <p className="text-xs text-white/40 font-mono uppercase tracking-widest">Model: JARVIS Core v2.4</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="icon" onClick={onClose} className="text-white/40 hover:text-white">

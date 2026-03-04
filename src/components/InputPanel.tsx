@@ -68,7 +68,7 @@ export const InputPanel = ({
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Ask anything to Antigravity..."
+                            placeholder="Ask anything to JARVIS..."
                             className="min-h-[60px] w-full bg-transparent border-none focus-visible:ring-0 resize-none text-base py-3 px-4 placeholder:text-white/20"
                             disabled={isLoading}
                         />
@@ -114,11 +114,6 @@ export const InputPanel = ({
                     </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-center gap-6 text-[10px] font-mono text-white/20 uppercase tracking-[0.2em]">
-                    <span className="flex items-center gap-1.5"><Brain className="w-3 h-3" /> Neural Network Active</span>
-                    <span className="flex items-center gap-1.5"><Zap className="w-3 h-3 text-neon-blue" /> Low Latency Engine</span>
-                    <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-neon-purple" /> Creative Mode On</span>
-                </div>
             </div>
         </div>
     );

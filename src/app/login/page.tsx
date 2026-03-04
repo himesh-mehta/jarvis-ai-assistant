@@ -81,7 +81,7 @@ export default function LoginPage() {
               Recall Identity
             </h1>
             <p className="text-white/50 text-sm">
-              Authorize your neural link to Antigravity AI
+              Authorize your neural link to JARVIS AI
             </p>
           </div>
 

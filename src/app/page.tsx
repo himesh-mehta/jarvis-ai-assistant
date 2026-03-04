@@ -113,8 +113,6 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
-        <Header openAnalytics={() => setIsAnalyticsOpen(true)} />
-
         <div className="flex-1 flex flex-col relative overflow-hidden">
           <ChatInterface messages={messages} isThinking={isLoading} />
 
@@ -127,7 +125,6 @@ export default function Home() {
           </div>
         </div>
 
-        <StatusIndicator />
       </div>
 
 

@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Antigravity AI | Advanced Intelligence",
-  description: "The next generation of AI assistance. Powerful, intelligent, and antigravitational.",
+  title: "JARVIS AI | Advanced Intelligence",
+  description: "The next generation of AI assistance. Powerful, intelligent, and autonomous.",
 };
 
 export default function RootLayout({
@@ -31,10 +31,8 @@ export default function RootLayout({
       >
         <TooltipProvider>
           {children}
-          <Chatbot />
         </TooltipProvider>
       </body>
     </html>
   );
 }
-

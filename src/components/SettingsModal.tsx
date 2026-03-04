@@ -81,7 +81,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                                             <div className="flex flex-col gap-2">
                                                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Master API Key</label>
                                                 <div className="flex gap-2">
-                                                    <Input type="password" value="sk-antigravity-••••••••••••••••" readOnly className="bg-white/5 border-white/10 font-mono" />
+                                                    <Input type="password" value="sk-jarvis-••••••••••••••••" readOnly className="bg-white/5 border-white/10 font-mono" />
                                                     <Button className="bg-white/10 hover:bg-white/20">Rotate</Button>
                                                 </div>
                                             </div>

@@ -90,7 +90,7 @@ export default function SignupPage() {
               Initialize Link
             </h1>
             <p className="text-white/50 text-sm">
-              Create your neural identity to access Antigravity AI
+              Create your neural identity to access JARVIS AI
             </p>
           </div>
 

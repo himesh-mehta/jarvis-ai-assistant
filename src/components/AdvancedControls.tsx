@@ -68,7 +68,7 @@ export const AdvancedControls = ({ isOpen, onClose }: { isOpen: boolean; onClose
                                         <Info className="w-3.5 h-3.5 text-white/20" />
                                     </div>
                                     <Textarea
-                                        placeholder="You are Antigravity, a professional AI assistant..."
+                                        placeholder="Define the AI's persona, tone, and behavior. E.g., 'You are a helpful assistant.'"
                                         className="bg-white/5 border-white/10 min-h-[100px] text-sm focus:border-neon-blue/50"
                                     />
                                 </div>
