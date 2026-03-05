@@ -24,15 +24,13 @@ const MessageSchema = new Schema<IMessage>({
 
 const ChatSchema = new Schema<IChat>(
   {
-    userId:    { type: String, required: true, index: true },  
-    userEmail: { type: String, required: true },               
+    userId: { type: String, required: true, index: true },
+    userEmail: { type: String, required: true },
     sessionId: { type: String, required: true, index: true },
-    title:     { type: String, default: 'New Chat' },          
-    messages:  [MessageSchema],
+    title: { type: String, default: 'New Chat' },
+    messages: [MessageSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Chat
-  ? mongoose.model<IChat>('Chat', ChatSchema)
-  : mongoose.model<IChat>('Chat', ChatSchema);
+export default mongoose.models.Chat || mongoose.model<IChat>('Chat', ChatSchema);

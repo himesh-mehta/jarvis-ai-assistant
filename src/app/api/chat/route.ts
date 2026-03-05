@@ -2,7 +2,7 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '../../lib/mongodb';
 import Chat from '../../lib/models/ChatModel';
-import admin from '../../../lib/firebase-admin';              // ← ADD
+import admin from '../../../lib/firebase-admin';
 
 const PROVIDERS = [
     {
@@ -170,9 +170,40 @@ async function fetchFromCohere(apiKey: string, messages: Message[]): Promise<Pro
     }
 }
 
+// ✅ Detect if message needs web search
+function needsWebSearch(message: string): boolean {
+    const clean = message.replace(/\[Reply strictly in .+ only\]\s*/i, '').toLowerCase();
+    return /today|latest|news|current|now|2025|2026|price|weather|stock|who is|what is happening|recently|right now|score|match|election|ipl|cricket|trending|breaking/i.test(clean);
+}
+
+// ✅ Fetch web search results from Tavily
+async function fetchWebSearch(query: string, baseUrl: string): Promise<string> {
+    try {
+        const cleanQuery = query.replace(/\[Reply strictly in .+ only\]\s*/i, '');
+        const res = await fetch(`${baseUrl}/api/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: cleanQuery }),
+        });
+
+        const data = await res.json();
+        if (!data.results?.length) return '';
+
+        const context = data.results
+            .map((r: any, i: number) => `${i + 1}. ${r.title}\n${r.content}\nSource: ${r.url}`)
+            .join('\n\n');
+
+        console.log('[Web Search] Found results for:', cleanQuery);
+        return context;
+    } catch (err) {
+        console.error('[Web Search] Failed:', err);
+        return '';
+    }
+}
+
 export async function POST(req: NextRequest) {
 
-    // ─── ADD: Verify Firebase Token ──────────────────────────
+    // ─── Verify Firebase Token ──────────────────────────
     const token = req.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -187,19 +218,36 @@ export async function POST(req: NextRequest) {
     } catch {
         return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
     }
-    // ─────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────
 
     const { message, sessionId, history = [] } = await req.json();
+
+    const host = req.headers.get('host');
+    const baseUrl = host ? `http://${host}` : 'http://localhost:3000';
+
+    // ✅ Run web search if needed
+    let searchContext = '';
+    if (needsWebSearch(message)) {
+        searchContext = await fetchWebSearch(message, baseUrl);
+    }
 
     const messages: Message[] = [
         {
             role: 'system',
-            // ✅ Updated system prompt for language detection
             content: `You are JARVIS, an advanced AI assistant. Be helpful, intelligent, and concise.
-CRITICAL LANGUAGE RULE: If the user message starts with [Reply strictly in Hindi only], you MUST reply entirely in Hindi (Devanagari script). If it starts with [Reply strictly in English only], you MUST reply entirely in English. Never mix languages. Never translate. Always follow the language instruction at the start of the message strictly.`,
+${searchContext ? 'You have been provided real-time web search results. Use them to give accurate up-to-date answers. Mention sources when using web results.' : ''}
+CRITICAL LANGUAGE RULE: If the user message starts with [Reply strictly in Hindi only], reply entirely in Hindi. If [Reply strictly in English only], reply entirely in English. Never mix languages.`,
         },
-        ...history.filter((m: any) => m.content !== message).slice(-8),
-        { role: 'user', content: message },
+        ...history.filter((m: any) => m.content !== message).slice(-8).map((m: any) => ({
+            role: m.role,
+            content: m.content,
+        })),
+        {
+            role: 'user',
+            content: searchContext
+                ? `${message}\n\n[Real-time web search results - use these to answer accurately:]\n${searchContext}`
+                : message,
+        },
     ];
 
     const results = await Promise.all([
@@ -242,13 +290,13 @@ CRITICAL LANGUAGE RULE: If the user message starts with [Reply strictly in Hindi
                     await new Promise(r => setTimeout(r, 15));
                 }
 
-                // ─── UPDATED: Save with userId + userEmail ────────
+                // ─── Save with userId + userEmail ────────
                 connectDB().then(() => {
                     Chat.findOneAndUpdate(
-                        { sessionId, userId: uid },                // ← filter by user
+                        { sessionId, userId: uid },
                         {
-                            $set: { userEmail: email },            // ← save email
-                            $setOnInsert: {                        // ← set title on first message
+                            $set: { userEmail: email },
+                            $setOnInsert: {
                                 title: message.slice(0, 50),
                             },
                             $push: {
@@ -263,7 +311,7 @@ CRITICAL LANGUAGE RULE: If the user message starts with [Reply strictly in Hindi
                         { upsert: true, returnOriginal: false }
                     ).catch(e => console.error("[MongoDB Save Error]", e));
                 }).catch(e => console.error("[MongoDB Conn Error]", e));
-                // ─────────────────────────────────────────────────
+                // ─────────────────────────────────────────
 
                 controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 controller.close();
