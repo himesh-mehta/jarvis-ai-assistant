@@ -1,8 +1,8 @@
 // app/api/chat/route.ts
 import { NextRequest } from 'next/server';
-import { connectDB } from '../../lib/mongodb';
-import Chat from '../../lib/models/ChatModel';
-import admin from '../../../lib/firebase-admin';
+import { connectDB } from '@/app/lib/mongodb';
+import Chat from '@/app/lib/models/ChatModel';
+import admin from '@/lib/firebase-admin';
 
 const PROVIDERS = [
     {
@@ -222,8 +222,9 @@ export async function POST(req: NextRequest) {
 
     const { message, sessionId, history = [] } = await req.json();
 
-    const host = req.headers.get('host');
-    const baseUrl = host ? `http://${host}` : 'http://localhost:3000';
+    const host = req.headers.get('host') || 'localhost:3000';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${host}`;
 
     // ✅ Run web search if needed
     let searchContext = '';

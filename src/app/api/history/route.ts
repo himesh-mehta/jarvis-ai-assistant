@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/mongodb';
-import Chat from '../../lib/models/ChatModel';
-import admin from '../../../lib/firebase-admin';         
+import { connectDB } from '@/app/lib/mongodb';
+import Chat from '@/app/lib/models/ChatModel';
+import admin from '@/lib/firebase-admin';
 
 export async function GET(req: NextRequest) {
     // ─── Verify Firebase Token ────────────────────────
@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
 
     // ─── If sessionId provided → return messages for that session ───
     if (sessionId) {
-        const chat = await Chat.findOne({ 
-            sessionId, 
+        const chat = await Chat.findOne({
+            sessionId,
             userId: uid           // ← only return if it belongs to this user
         });
         return NextResponse.json({ messages: chat?.messages || [] });
