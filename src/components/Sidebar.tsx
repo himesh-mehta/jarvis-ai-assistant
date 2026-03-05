@@ -67,11 +67,21 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings, onNewChat, 
     const [isSearching, setIsSearching] = useState(false);
 
     const navItems = [
+<<<<<<< Updated upstream
         { id: "new", icon: <Plus className="w-4.5 h-4.5" />, label: "New chat" },
         { id: "search", icon: <Search className="w-4.5 h-4.5" />, label: "Search" },
         { id: "customize", icon: <Sliders className="w-4.5 h-4.5" />, label: "Customize" },
         { id: "Chats", icon: <MessageCircle className="w-4.5 h-4.5" />, label: "Chats" },
         { id: "projects", icon: <Library className="w-4.5 h-4.5" />, label: "Projects" },
+=======
+        { id: "new", icon: <Plus className="w-4 h-4" />, label: "New chat" },
+        { id: "search", icon: <Search className="w-4 h-4" />, label: "Search" },
+        { id: "customize", icon: <Briefcase className="w-4 h-4" />, label: "Customize" },
+        { id: "Chats", icon: <MessageCircle className="w-4 h-4" />, label: "Chats" },
+        { id: "projects", icon: <Library className="w-4 h-4" />, label: "Projects" },
+        { id: "artifacts", icon: <Shapes className="w-4 h-4" />, label: "Artifacts" },
+        { id: "code", icon: <Code2 className="w-4 h-4" />, label: "Code" },
+>>>>>>> Stashed changes
     ];
 
     return (

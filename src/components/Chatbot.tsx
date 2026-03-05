@@ -4,9 +4,24 @@ import { useState, useEffect, useRef } from 'react';
 interface Message {
     role: 'user' | 'assistant';
     content: string;
+    provider?: string;
 }
 
 const SESSION_ID = 'jarvis-' + Math.random().toString(36).slice(2, 9);
+
+const PROVIDER_COLORS: Record<string, string> = {
+    groq: 'text-orange-400',
+    gemini: 'text-green-400',
+    cohere: 'text-yellow-400',
+    huggingface: 'text-pink-400',
+};
+
+const PROVIDER_ICONS: Record<string, string> = {
+    groq: '⚡',
+    gemini: '🤖',
+    cohere: '🧠',
+    huggingface: '🤗',
+};
 
 export default function Chatbot() {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -16,11 +31,8 @@ export default function Chatbot() {
     const [mounted, setMounted] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
 
-    // Load chat history on mount
     useEffect(() => {
         fetch(`/api/history?sessionId=${SESSION_ID}`)
             .then(r => r.json())
@@ -41,7 +53,7 @@ export default function Chatbot() {
         setInput('');
         setLoading(true);
 
-        const aiMsg: Message = { role: 'assistant', content: '' };
+        const aiMsg: Message = { role: 'assistant', content: '', provider: undefined };
         setMessages(prev => [...prev, aiMsg]);
 
         try {
@@ -60,6 +72,7 @@ export default function Chatbot() {
             const reader = res.body!.getReader();
             const decoder = new TextDecoder();
             let accumulatedData = '';
+            let winnerProvider: string | undefined;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -67,8 +80,6 @@ export default function Chatbot() {
 
                 accumulatedData += decoder.decode(value, { stream: true });
                 const lines = accumulatedData.split('\n');
-
-                // Keep the last partial line in the buffer
                 accumulatedData = lines.pop() || '';
 
                 for (const line of lines) {
@@ -79,13 +90,15 @@ export default function Chatbot() {
                     try {
                         const parsed = JSON.parse(data);
                         if (parsed.content) {
+                            if (parsed.provider) winnerProvider = parsed.provider;
                             setMessages(prev => {
                                 const newMsgs = [...prev];
                                 const last = newMsgs[newMsgs.length - 1];
                                 if (last && last.role === 'assistant') {
                                     newMsgs[newMsgs.length - 1] = {
                                         ...last,
-                                        content: last.content + parsed.content
+                                        content: last.content + parsed.content,
+                                        provider: winnerProvider,
                                     };
                                 }
                                 return newMsgs;
@@ -102,7 +115,7 @@ export default function Chatbot() {
                 const newMsgs = [...prev];
                 newMsgs[newMsgs.length - 1] = {
                     role: 'assistant',
-                    content: 'Sorry, I encountered an error. Please check your connection or try again later.'
+                    content: 'Sorry, I encountered an error. Please check your connection or try again later.',
                 };
                 return newMsgs;
             });
@@ -129,36 +142,55 @@ export default function Chatbot() {
                     {/* Header */}
                     <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">J</div>
-                        <div>
+                        <div className="flex-1">
                             <div className="text-white text-sm font-bold tracking-wide">JARVIS AI</div>
                             <div className="text-xs text-blue-400 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Online
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                4 AI Engines Active
                             </div>
+                        </div>
+                        <div className="flex gap-1 text-sm">
+                            <span title="Groq">⚡</span>
+                            <span title="Gemini">🤖</span>
+                            <span title="Cohere">🧠</span>
+                            <span title="HuggingFace">🤗</span>
                         </div>
                     </div>
 
                     {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-700">
                         {messages.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center space-y-2 p-6">
+                            <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center space-y-3 p-6">
                                 <div className="text-4xl">🤖</div>
                                 <div className="text-sm">Hello! I'm JARVIS. How can I help you today?</div>
+                                <div className="text-xs text-gray-600 bg-gray-800 rounded-xl p-3 border border-gray-700">
+                                    Powered by <span className="text-orange-400">⚡ Groq</span>, <span className="text-green-400">🤖 Gemini</span>, <span className="text-yellow-400">🧠 Cohere</span> & <span className="text-pink-400">🤗 HuggingFace</span>
+                                </div>
                             </div>
                         )}
                         {messages.map((msg, i) => (
-                            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === 'user'
+                            <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                                    msg.role === 'user'
                                         ? 'bg-blue-600 text-white rounded-tr-none shadow-md'
                                         : 'bg-gray-800 text-gray-200 border border-gray-700 rounded-tl-none shadow-sm'
-                                    }`}>
+                                }`}>
                                     {msg.content || (
-                                        <div className="flex gap-1 py-1">
+                                        <div className="flex gap-1 py-1 items-center">
+                                            <span className="text-xs text-gray-500 mr-1">Racing AIs</span>
                                             <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" />
                                             <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
                                             <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0.4s]" />
                                         </div>
                                     )}
                                 </div>
+                                {/* Winner badge */}
+                                {msg.role === 'assistant' && msg.provider && msg.content && (
+                                    <div className={`mt-1 text-[10px] flex items-center gap-1 ${PROVIDER_COLORS[msg.provider] || 'text-gray-500'}`}>
+                                        <span>{PROVIDER_ICONS[msg.provider] || '🤖'}</span>
+                                        <span className="capitalize">{msg.provider} won</span>
+                                    </div>
+                                )}
                             </div>
                         ))}
                         <div ref={bottomRef} />
@@ -166,10 +198,7 @@ export default function Chatbot() {
 
                     {/* Input Area */}
                     <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            sendMessage();
-                        }}
+                        onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
                         className="p-3 border-t border-gray-700 flex gap-2 bg-gray-900"
                     >
                         <input

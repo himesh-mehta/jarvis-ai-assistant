@@ -1,45 +1,229 @@
+// app/api/chat/route.ts
 import { NextRequest } from 'next/server';
-import Groq from 'groq-sdk';
 import { connectDB } from '../../lib/mongodb';
 import Chat from '../../lib/models/ChatModel';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const PROVIDERS = [
+    {
+        name: 'groq',
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        apiKey: process.env.GROQ_API_KEY!,
+        model: 'llama-3.3-70b-versatile',
+    },
+    {
+        name: 'gemini',
+        url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        apiKey: process.env.GEMINI_API_KEY!,
+        model: 'gemini-2.0-flash',
+    },
+    {
+        name: 'huggingface',
+        url: 'https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1/v1/chat/completions',
+        apiKey: process.env.HUGGINGFACE_API_KEY!,
+        model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    },
+];
+
+interface Message {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+}
+
+interface ProviderResult {
+    name: string;
+    content: string;
+    score: number;
+    latency: number;
+    error?: string;
+}
+
+function scoreResponse(content: string, userMessage: string, latencyMs: number): number {
+    if (!content || content.trim().length === 0) return 0;
+
+    let score = 50;
+
+    const len = content.trim().length;
+    if (len > 800) score += 15;
+    else if (len > 300) score += 10;
+    else if (len > 100) score += 5;
+    else if (len < 30) score -= 20;
+
+    const refusalPatterns = [
+        /i('m| am) (not able|unable) to/i,
+        /i cannot (provide|help|assist)/i,
+        /as an ai(,| language model)/i,
+        /i don'?t have (access|the ability)/i,
+        /sorry,? (but )?i (can'?t|cannot)/i,
+    ];
+    if (refusalPatterns.some(p => p.test(content))) score -= 25;
+
+    const userKeywords = userMessage.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+    const contentLower = content.toLowerCase();
+    const matchCount = userKeywords.filter(kw => contentLower.includes(kw)).length;
+    score += Math.min(matchCount * 3, 15);
+
+    if (/```[\s\S]+```/.test(content)) score += 10;
+    if (/^\s*[-*•]\s/m.test(content)) score += 5;
+    if (/^\s*\d+\.\s/m.test(content)) score += 5;
+
+    if (latencyMs < 1000) score += 5;
+    else if (latencyMs < 3000) score += 2;
+    else if (latencyMs > 8000) score -= 5;
+
+    const trimmed = content.trim();
+    const lastChar = trimmed[trimmed.length - 1];
+    if (!['.', '!', '?', '`', '"', "'", ')', ']'].includes(lastChar)) score -= 5;
+
+    return Math.max(0, Math.min(100, score));
+}
+
+// Standard fetch for Groq, Gemini, HuggingFace
+async function fetchFromProvider(
+    provider: typeof PROVIDERS[0],
+    messages: Message[]
+): Promise<ProviderResult> {
+    const start = Date.now();
+
+    try {
+        const res = await fetch(provider.url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${provider.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: provider.model,
+                messages,
+                max_tokens: 1024,
+                temperature: 0.7,
+            }),
+            signal: AbortSignal.timeout(12000),
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
+        }
+
+        const data = await res.json();
+        const content = data?.choices?.[0]?.message?.content ?? '';
+        const latency = Date.now() - start;
+
+        return {
+            name: provider.name,
+            content,
+            latency,
+            score: scoreResponse(content, messages[messages.length - 1].content, latency),
+        };
+    } catch (err: any) {
+        return {
+            name: provider.name,
+            content: '',
+            latency: Date.now() - start,
+            score: 0,
+            error: err.message,
+        };
+    }
+}
+
+// Cohere has different API format so separate function
+async function fetchFromCohere(apiKey: string, messages: Message[]): Promise<ProviderResult> {
+    const start = Date.now();
+    try {
+        const systemMsg = messages.find(m => m.role === 'system')?.content ?? '';
+        const chatMessages = messages
+            .filter(m => m.role !== 'system')
+            .map(m => ({
+                role: m.role === 'user' ? 'user' : 'assistant',
+                content: m.content,
+            }));
+
+        const res = await fetch('https://api.cohere.com/v2/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'command-r-plus',
+                system_prompt: systemMsg,
+                messages: chatMessages,
+                max_tokens: 1024,
+            }),
+            signal: AbortSignal.timeout(12000),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const content = data?.message?.content?.[0]?.text ?? '';
+        const latency = Date.now() - start;
+
+        return {
+            name: 'cohere',
+            content,
+            latency,
+            score: scoreResponse(content, messages[messages.length - 1].content, latency),
+        };
+    } catch (err: any) {
+        return { name: 'cohere', content: '', latency: Date.now() - start, score: 0, error: err.message };
+    }
+}
 
 export async function POST(req: NextRequest) {
-    const { message, sessionId, history } = await req.json();
+    const { message, sessionId, history = [] } = await req.json();
 
-    const messages = [
+    const messages: Message[] = [
         {
-            role: 'system' as const,
-            content: `You are JARVIS, an advanced AI assistant. Be helpful, intelligent, and concise.`,
+            role: 'system',
+            content: 'You are JARVIS, an advanced AI assistant. Be helpful, intelligent, and concise.',
         },
-        ...history,
-        { role: 'user' as const, content: message },
+        // Filter out the current message from history if it exists there
+        ...history.filter((m: any) => m.content !== message).slice(-8),
+        { role: 'user', content: message },
     ];
 
-    // Stream response from Groq
+    // All 4 race in parallel
+    const results = await Promise.all([
+        fetchFromProvider(PROVIDERS[0], messages), // groq
+        fetchFromProvider(PROVIDERS[1], messages), // gemini
+        fetchFromCohere(process.env.COHERE_API_KEY!, messages), // cohere
+        fetchFromProvider(PROVIDERS[2], messages), // huggingface
+    ]);
+
+    const best = results
+        .filter(r => r.content.length > 0)
+        .sort((a, b) => b.score - a.score)[0];
+
+    console.log('[AI Race]', results.map(r => `${r.name}: score=${r.score}, latency=${r.latency}ms${r.error ? ', err=' + r.error : ''}`));
+    console.log(`[AI Race] Winner: ${best?.name} (score: ${best?.score})`);
+
+    if (!best) {
+        const encoder = new TextEncoder();
+        const fallback = new ReadableStream({
+            start(controller) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: "I'm having trouble connecting right now. Please try again." })}\n\n`));
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.close();
+            },
+        });
+        return new Response(fallback, {
+            headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+        });
+    }
+
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
         async start(controller) {
             try {
-                const groqStream = await groq.chat.completions.create({
-                    model: 'llama-3.3-70b-versatile',
-                    messages,
-                    max_tokens: 1024,
-                    stream: true,
-                });
-
-                let fullReply = '';
-
-                for await (const chunk of groqStream) {
-                    const content = chunk.choices[0]?.delta?.content || '';
-                    if (content) {
-                        fullReply += content;
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                    }
+                const words = best.content.split(/(\s+)/);
+                for (const word of words) {
+                    controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({ content: word, provider: best.name })}\n\n`)
+                    );
+                    await new Promise(r => setTimeout(r, 15));
                 }
 
-                // Save to MongoDB after full response
+                // Save to MongoDB
                 await connectDB();
                 await Chat.findOneAndUpdate(
                     { sessionId },
@@ -48,7 +232,7 @@ export async function POST(req: NextRequest) {
                             messages: {
                                 $each: [
                                     { role: 'user', content: message, timestamp: new Date() },
-                                    { role: 'assistant', content: fullReply, timestamp: new Date() },
+                                    { role: 'assistant', content: best.content, timestamp: new Date() },
                                 ],
                             },
                         },
