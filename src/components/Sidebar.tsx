@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Plus,
     MessageSquare,
-    Search,
     Edit2,
     Settings,
     LogOut,
@@ -13,7 +12,6 @@ import {
     PanelLeft,
     MessageCircle,
     Info,
-    Sliders,
     Library,
     Mic,
     MicOff,
@@ -22,7 +20,9 @@ import {
     VolumeX,
     Bot,
     User,
-    Trash2
+    Trash2,
+    Pin,
+    Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,9 @@ interface SidebarProps {
     onNewChat: () => void;
     onSelectChat: (id: string, title: string) => void;
     onDeleteChat?: (id: string) => void;
-    chats: { id: string | number; title: string }[];
+    onRenameChat?: (id: string, newTitle: string) => void;
+    onPinChat?: (id: string) => void;
+    chats: { id: string | number; title: string; pinned?: boolean }[];
     user: FirebaseUser | null;
 }
 
@@ -92,14 +94,16 @@ export const Sidebar = ({
     onNewChat,
     onSelectChat,
     onDeleteChat,
+    onRenameChat,
+    onPinChat,
     chats,
     user
 }: SidebarProps) => {
     const router = useRouter();
     const { logout } = useAuth();
-    const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("Chats");
-    const [isSearching, setIsSearching] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editTitle, setEditTitle] = useState("");
 
     // ─── Voice Chat State ──────────────────────────────────────────────
     const [voiceOpen, setVoiceOpen] = useState(false);
@@ -124,9 +128,8 @@ export const Sidebar = ({
 
     const navItems = [
         { id: "new", icon: <Plus className="w-4.5 h-4.5" />, label: "New chat" },
-        { id: "search", icon: <Search className="w-4.5 h-4.5" />, label: "Search" },
-        { id: "customize", icon: <Sliders className="w-4.5 h-4.5" />, label: "Customize" },
         { id: "Chats", icon: <MessageCircle className="w-4.5 h-4.5" />, label: "Chats" },
+        { id: "voice", icon: <Mic className="w-4.5 h-4.5" />, label: "Talk to Jarvis" },
         { id: "projects", icon: <Library className="w-4.5 h-4.5" />, label: "Projects" },
     ];
 
@@ -335,78 +338,129 @@ export const Sidebar = ({
                 </div>
 
                 <ScrollArea className="flex-1 no-scrollbar">
-                    <div className="flex flex-col py-2 px-2 gap-0.5">
+                    <div className="flex flex-col pt-12 pb-2 px-2 gap-0.5">
                         {navItems.map((item) => (
-                            <Tooltip key={item.id} delayDuration={isCollapsed ? 0 : 500}>
-                                <TooltipTrigger asChild>
-                                    <div
-                                        onClick={() => {
-                                            setActiveTab(item.id);
-                                            if (item.id === "new") onNewChat();
-                                            if (item.id === "customize") openSettings();
-                                            if (item.id === "search") setIsSearching(!isSearching);
-                                        }}
-                                        className={cn(
-                                            "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all group",
-                                            activeTab === item.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/5",
-                                            isCollapsed && "justify-center px-0"
-                                        )}
-                                    >
-                                        <div className="flex-shrink-0">{item.icon}</div>
-                                        {!isCollapsed && <span className="text-[13.5px] font-medium">{item.label}</span>}
-                                    </div>
-                                </TooltipTrigger>
-                                {isCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-                            </Tooltip>
+                            <React.Fragment key={item.id}>
+                                <Tooltip delayDuration={isCollapsed ? 0 : 500}>
+                                    <TooltipTrigger asChild>
+                                        <div
+                                            onClick={() => {
+                                                if (item.id === "voice") {
+                                                    setVoiceOpen(true);
+                                                    return;
+                                                }
+                                                if (item.id === "new") onNewChat();
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all group text-white/40 hover:text-white hover:bg-white/5",
+                                                isCollapsed && "justify-center px-0"
+                                            )}
+                                        >
+                                            <div className="flex-shrink-0">{item.icon}</div>
+                                            {!isCollapsed && <span className="text-[13.5px] font-medium">{item.label}</span>}
+                                        </div>
+                                    </TooltipTrigger>
+                                    {isCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                                </Tooltip>
+
+                            </React.Fragment>
                         ))}
 
-                        <AnimatePresence>
-                            {isSearching && !isCollapsed && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-3 mt-1">
-                                    <div className="relative">
-                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
-                                        <Input
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            placeholder="Search..."
-                                            className="h-8 bg-white/5 border-white/5 pl-8 text-[12px] placeholder:text-white/20"
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
 
                         {!isCollapsed && (
-                            <div className="mt-8 px-3 flex flex-col flex-1 min-h-0">
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.1em] mb-4">Recents</p>
+                            <div className="mt-14 pl-2 pr-4 flex flex-col flex-1 min-h-0">
+                                <p className="text-[13px] font-bold text-white uppercase tracking-[0.1em] mb-4">Recents</p>
                                 <div className="space-y-1 pb-4">
-                                    {chats
-                                        .filter(chat => chat.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                                        .map(chat => (
-                                            <div key={chat.id} className="group flex items-center justify-between gap-2 text-[13px] text-white/50 hover:text-white cursor-pointer py-1.5 rounded-lg hover:bg-white/5 px-2">
-                                                <span onClick={() => onSelectChat(chat.id.toString(), chat.title)} className="truncate flex-1">{chat.title}</span>
-                                                {onDeleteChat && (
-                                                    <button onClick={(e) => { e.stopPropagation(); onDeleteChat(chat.id.toString()); }} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400">
-                                                        <Trash2 className="w-3.5 h-3.5" />
+                                    {chats.map(chat => (
+                                        <div
+                                            key={chat.id}
+                                            className={cn(
+                                                "group flex items-center justify-between gap-2 text-[14px] text-white/50 hover:text-white cursor-pointer py-1.5 px-3 rounded-xl transition-all duration-300",
+                                                chat.pinned ? "bg-white/5 text-white" : "hover:bg-white/5"
+                                            )}
+                                        >
+                                            {editingId === chat.id.toString() ? (
+                                                <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
+                                                    <Input
+                                                        autoFocus
+                                                        value={editTitle}
+                                                        onChange={(e) => setEditTitle(e.target.value)}
+                                                        onBlur={() => {
+                                                            if (onRenameChat && editTitle.trim()) {
+                                                                onRenameChat(chat.id.toString(), editTitle);
+                                                            }
+                                                            setEditingId(null);
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                if (onRenameChat && editTitle.trim()) {
+                                                                    onRenameChat(chat.id.toString(), editTitle);
+                                                                }
+                                                                setEditingId(null);
+                                                            }
+                                                        }}
+                                                        className="h-6 bg-white/10 border-white/20 text-[13px] py-0 px-2 flex-1"
+                                                    />
+                                                    <button className="text-neon-blue hover:text-white" onClick={() => {
+                                                        if (onRenameChat && editTitle.trim()) {
+                                                            onRenameChat(chat.id.toString(), editTitle);
+                                                        }
+                                                        setEditingId(null);
+                                                    }}>
+                                                        <Check className="w-3.5 h-3.5" />
                                                     </button>
-                                                )}
-                                            </div>
-                                        ))}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div
+                                                        onClick={() => onSelectChat(chat.id.toString(), chat.title)}
+                                                        className="flex-1 min-w-0 flex items-center gap-2"
+                                                    >
+                                                        {chat.pinned && <Pin className="w-3 h-3 text-neon-blue rotate-45 fill-neon-blue shrink-0" />}
+                                                        <span className="truncate text-white/50 group-hover:text-white transition-colors">{chat.title}</span>
+                                                    </div>
+                                                    <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingId(chat.id.toString());
+                                                                setEditTitle(chat.title);
+                                                            }}
+                                                            className="p-1 hover:text-neon-blue rounded-lg transition-colors"
+                                                            title="Rename"
+                                                        >
+                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (onPinChat) onPinChat(chat.id.toString());
+                                                            }}
+                                                            className={cn("p-1 rounded-lg transition-colors hover:text-neon-blue", chat.pinned ? "text-neon-blue" : "text-white/30")}
+                                                            title={chat.pinned ? "Unpin" : "Pin"}
+                                                        >
+                                                            <Pin className={cn("w-3.5 h-3.5", chat.pinned ? "fill-neon-blue" : "")} />
+                                                        </button>
+                                                        {onDeleteChat && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); onDeleteChat(chat.id.toString()); }}
+                                                                className="p-1 hover:text-red-400 rounded-lg transition-colors"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
 
-                <div className="px-2 pb-2">
-                    <div
-                        onClick={() => setVoiceOpen(true)}
-                        className={cn("flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer bg-white/5 border border-white/5 hover:border-neon-blue/30 transition-all", isCollapsed && "justify-center px-0")}
-                    >
-                        <Mic className="w-5 h-5 text-neon-blue" />
-                        {!isCollapsed && <span className="text-[13.5px] font-bold text-white">Talk to Jarvis</span>}
-                    </div>
-                </div>
 
                 <div className="p-2 border-t border-white/5">
                     <DropdownMenu>

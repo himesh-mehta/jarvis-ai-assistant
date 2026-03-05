@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
 import { InputPanel } from "@/components/InputPanel";
@@ -25,7 +25,8 @@ export default function Home() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState('');
-  const [chatHistoryList, setChatHistoryList] = useState<{ id: string; title: string }[]>([]);
+  const [chatHistoryList, setChatHistoryList] = useState<{ id: string; title: string; pinned?: boolean }[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // ── Generate sessionId only after user is ready ──────────────
   useEffect(() => {
@@ -121,6 +122,13 @@ export default function Home() {
     }
   };
 
+  const handleRenameChat = (id: string, newTitle: string) => {
+    setChatHistoryList(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
+  };
+
+  const handlePinChat = (id: string) => {
+    setChatHistoryList(prev => prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c));
+  };
   // ── Send message ──────────────────────────────────────────────
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
@@ -145,6 +153,11 @@ export default function Home() {
 
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
+
+    // Create abort controller
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setMessages(prev => [
       ...prev,
       { id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: timestampStr },
@@ -169,6 +182,7 @@ export default function Home() {
           Authorization: `Bearer ${token}`,   // ← always send token
         },
         body: JSON.stringify({ message: content, sessionId, history: apiHistory }),
+        signal: controller.signal,
       });
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -235,6 +249,15 @@ export default function Home() {
       });
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -264,7 +287,9 @@ export default function Home() {
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
         onDeleteChat={handleDeleteChat}
-        chats={chatHistoryList}
+        onRenameChat={handleRenameChat}
+        onPinChat={handlePinChat}
+        chats={[...chatHistoryList].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))}
         user={user}
       />
 
@@ -275,6 +300,7 @@ export default function Home() {
             <InputPanel
               onSend={handleSendMessage}
               isLoading={isLoading}
+              onStop={handleStopGeneration}
               openControls={() => setIsControlsOpen(true)}
             />
           </div>

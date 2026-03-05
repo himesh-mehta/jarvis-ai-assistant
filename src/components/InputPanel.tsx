@@ -4,13 +4,20 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     Mic,
-    Image as ImageIcon,
-    FileUp,
-    Sliders,
+    Paperclip,
     ArrowUp,
     Sparkles,
-    MicOff
+    MicOff,
+    Image as ImageIcon,
+    FileUp,
+    Square
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -25,11 +32,13 @@ export const InputPanel = ({
     onSend,
     isLoading,
     onVoiceChat,
+    onStop,
 }: {
     openControls: () => void;
     onSend: (content: string) => void;
     isLoading: boolean;
     onVoiceChat?: () => void;
+    onStop?: () => void;
 }) => {
     const [input, setInput] = useState("");
     const [isRecording, setIsRecording] = useState(false);
@@ -156,9 +165,23 @@ export const InputPanel = ({
 
                         <div className="flex items-center justify-between px-2 pb-1.5">
                             <div className="flex items-center gap-1">
-                                <InputIconButton icon={<ImageIcon className="w-4 h-4" />} label="Upload Image" />
-                                <InputIconButton icon={<FileUp className="w-4 h-4" />} label="Upload File" />
-                                <InputIconButton icon={<Sliders className="w-4 h-4" />} label="AI Controls" onClick={openControls} />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <div>
+                                            <InputIconButton icon={<Paperclip className="w-4 h-4" />} label="Add photos & files" />
+                                        </div>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent side="top" align="start" className="w-40 glass-dark border-white/10 text-white p-1 mb-2">
+                                        <DropdownMenuItem className="flex items-center gap-2.5 cursor-pointer focus:bg-white/10 focus:text-white rounded-lg transition-colors py-2 px-3">
+                                            <ImageIcon className="w-4 h-4 text-neon-blue" />
+                                            <span className="text-[13px] font-medium">Add photo</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="flex items-center gap-2.5 cursor-pointer focus:bg-white/10 focus:text-white rounded-lg transition-colors py-2 px-3">
+                                            <FileUp className="w-4 h-4 text-purple-400" />
+                                            <span className="text-[13px] font-medium">Add File</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -187,19 +210,19 @@ export const InputPanel = ({
                                     </TooltipContent>
                                 </Tooltip>
 
-                                {/* Send Button */}
+                                {/* Send / Stop Button */}
                                 <Button
-                                    onClick={handleSend}
-                                    disabled={!input.trim() || isLoading}
+                                    onClick={isLoading ? onStop : handleSend}
+                                    disabled={!isLoading && !input.trim()}
                                     className={cn(
                                         "h-9 w-9 rounded-full transition-all duration-300",
-                                        input.trim() && !isLoading
+                                        (input.trim() || isLoading)
                                             ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105"
                                             : "bg-white/5 text-white/20 border border-white/10"
                                     )}
                                 >
                                     {isLoading ? (
-                                        <Sparkles className="w-4 h-4 animate-spin" />
+                                        <Square className="w-3.5 h-3.5 fill-current" />
                                     ) : (
                                         <ArrowUp className="w-4 h-4" />
                                     )}
@@ -208,8 +231,8 @@ export const InputPanel = ({
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

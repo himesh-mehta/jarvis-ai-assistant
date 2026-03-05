@@ -17,7 +17,8 @@ import {
     MessageSquare,
     Sparkles,
     Bot,
-    User
+    User,
+    ArrowDown
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -38,23 +39,37 @@ interface Message {
 }
 
 export const ChatInterface = ({ messages, isThinking }: { messages: Message[], isThinking: boolean }) => {
-    const bottomRef = useRef<HTMLDivElement>(null);
+    const [showScrollButton, setShowScrollButton] = useState(false);
     const [autoScroll, setAutoScroll] = useState(true);
+    const bottomRef = useRef<HTMLDivElement>(null);
 
+    const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+        if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior, block: "end" });
+        }
+    };
+
+    // Auto-scroll logic: only scroll if user is at bottom or AI is thinking
     useEffect(() => {
-        if (autoScroll && bottomRef.current) {
-            bottomRef.current.scrollIntoView({
-                behavior: "smooth",
-                block: "end",
-            });
+        if (autoScroll) {
+            scrollToBottom(isThinking ? "auto" : "smooth");
         }
     }, [messages, isThinking, autoScroll]);
 
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+        // Check if user is near bottom (within 100px)
+        const isAtBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 100;
+
+        setAutoScroll(isAtBottom);
+        setShowScrollButton(!isAtBottom);
+    };
+
     return (
-        <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden relative">
             <ScrollArea
                 className="flex-1 px-4 lg:px-8 py-6 no-scrollbar"
-                onWheel={() => setAutoScroll(false)} // Stop auto-scroll on manual scroll
+                onScroll={handleScroll}
             >
                 <div className="max-w-4xl mx-auto space-y-8 pb-0">
                     {messages.length === 0 ? (
@@ -77,8 +92,8 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                             animate={{ opacity: 1 }}
                             className="pt-2 pb-12 flex items-center justify-center"
                         >
-                            <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm">
-                                <span className="text-[10px] font-bold tracking-[0.3em] text-white/20 uppercase pl-[0.3em]">JARVIS</span>
+                            <div className="px-3 py-1 rounded-full border border-white/80 bg-white/5 backdrop-blur-sm">
+                                <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em]">JARVIS</span>
                             </div>
                         </motion.div>
                     )}
@@ -125,6 +140,25 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                     <div ref={bottomRef} className="h-0" />
                 </div>
             </ScrollArea>
+
+            <AnimatePresence>
+                {showScrollButton && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                        className="absolute bottom-8 right-8 z-50"
+                    >
+                        <Button
+                            onClick={() => scrollToBottom()}
+                            size="icon"
+                            className="h-10 w-10 rounded-full bg-blue-600/80 hover:bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] backdrop-blur-md border border-white/10"
+                        >
+                            <ArrowDown className="w-5 h-5" />
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
