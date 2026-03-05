@@ -29,9 +29,9 @@ import {
     MessageCircle,
     Download,
     Info,
-    User,
     Sliders,
-    Library
+    Library,
+    X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,9 +52,9 @@ import {
 } from "@/components/ui/tooltip";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { User as FirebaseUser } from "firebase/auth";
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -63,12 +63,14 @@ interface SidebarProps {
     openAuth: () => void;
     onNewChat: () => void;
     onSelectChat: (id: string, title: string) => void;
+    onDeleteChat?: (id: string) => void;
     chats: { id: string | number; title: string }[];
     user: FirebaseUser | null;
 }
 
-export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings, openAuth, onNewChat, onSelectChat, chats, user }: SidebarProps) => {
+export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings, openAuth, onNewChat, onSelectChat, onDeleteChat, chats, user }: SidebarProps) => {
     const router = useRouter();
+    const { logout } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("Chats");
     const [isSearching, setIsSearching] = useState(false);
@@ -189,10 +191,25 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings, openAuth, o
                                         .map(chat => (
                                             <div
                                                 key={chat.id}
-                                                onClick={() => onSelectChat(chat.id.toString(), chat.title)}
-                                                className="text-[13px] text-white/50 hover:text-white transition-colors cursor-pointer truncate py-1.5 rounded-lg hover:bg-white/5 px-2 active:bg-white/10"
+                                                className="group/item flex items-center justify-between gap-2 text-[13px] text-white/50 hover:text-white transition-colors cursor-pointer py-1.5 rounded-lg hover:bg-white/5 px-2 active:bg-white/10"
                                             >
-                                                {chat.title}
+                                                <span
+                                                    onClick={() => onSelectChat(chat.id.toString(), chat.title)}
+                                                    className="truncate flex-1"
+                                                >
+                                                    {chat.title}
+                                                </span>
+                                                {onDeleteChat && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onDeleteChat(chat.id.toString());
+                                                        }}
+                                                        className="opacity-0 group-hover/item:opacity-40 hover:!opacity-100 transition-opacity p-1 hover:bg-red-500/10 hover:text-red-400 rounded-md"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                 </div>
@@ -242,7 +259,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, openSettings, openAuth, o
                                 <Separator className="bg-white/5 my-1" />
                                 <DropdownMenuItem
                                     className="focus:bg-white/10 rounded-lg cursor-pointer flex items-center gap-2 py-2 text-red-400 focus:text-red-300"
-                                    onClick={() => signOut(auth)}
+                                    onClick={() => logout()}
                                 >
                                     <LogOut className="w-4 h-4" /> Logout
                                 </DropdownMenuItem>

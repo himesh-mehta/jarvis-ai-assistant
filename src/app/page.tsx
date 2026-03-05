@@ -4,26 +4,14 @@ import React, { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
 import { InputPanel } from "@/components/InputPanel";
-import { Header, StatusIndicator } from "@/components/Header";
 import { AdvancedControls } from "@/components/AdvancedControls";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { SettingsModal } from "@/components/SettingsModal";
 import { AuthModal } from "@/components/AuthModal";
 import ParticleBackground from "@/components/ParticleBackground";
-import { motion, AnimatePresence } from "framer-motion";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  serverTimestamp,
-  setDoc,
-  doc
-} from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
+
+// ── Removed Firestore imports — MongoDB handles all storage now ──
 
 export default function Home() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -31,118 +19,159 @@ export default function Home() {
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
-  // Monitor Auth State
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) setChatHistoryList([]);
-    });
-    return () => unsubscribe();
-  }, []);
+  const { user, loading: authLoading } = useAuth();
 
-  // Sync Chat History from Firestore
-  useEffect(() => {
-    const syncHistory = async () => {
-      if (!user) return;
-      try {
-        const q = query(collection(db, "users", user.uid, "chats"), orderBy("updatedAt", "desc"));
-        const snapshot = await getDocs(q);
-        const history = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
-        setChatHistoryList(history);
-      } catch (e) {
-        console.error("History Sync Failed:", e);
-      }
-    };
-    syncHistory();
-  }, [user]);
-
-  // Chat Logic
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(() => 'session-' + Math.random().toString(36).slice(2, 9));
+  const [sessionId, setSessionId] = useState('');
   const [chatHistoryList, setChatHistoryList] = useState<{ id: string; title: string }[]>([]);
 
+  // ── Generate sessionId only after user is ready ──────────────
+  useEffect(() => {
+    if (user) {
+      setSessionId('session-' + Math.random().toString(36).slice(2, 9));
+    } else {
+      setSessionId('');
+      setMessages([]);
+      setChatHistoryList([]);
+    }
+  }, [user]);
+
+  // ── Sync chat history from MongoDB when user logs in ─────────
+  useEffect(() => {
+    if (!user || authLoading) return;
+
+    const syncHistory = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/history', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
+        if (data.sessions?.length > 0) {
+          setChatHistoryList(
+            data.sessions.map((s: any) => ({ id: s.sessionId, title: s.title || 'New Chat' }))
+          );
+        }
+      } catch (e) {
+        console.error('History sync failed:', e);
+      }
+    };
+
+    syncHistory();
+  }, [user, authLoading]);
+
+  // ── Load a specific chat session ─────────────────────────────
   const handleSelectChat = async (id: string, title: string) => {
     if (!user) return;
+
     setSessionId(id);
     setMessages([]);
+
     try {
-      const q = query(collection(db, "users", user.uid, "chats", id, "messages"), orderBy("timestamp", "asc"));
-      const snapshot = await getDocs(q);
-      const msgs = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          // Ensure timestamp is a string/formatted for UI
-          timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : data.timestamp
-        };
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/history?sessionId=${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setMessages(msgs);
+      const data = await res.json();
+
+      if (data.messages?.length > 0) {
+        setMessages(
+          data.messages.map((m: any, i: number) => ({
+            ...m,
+            id: m._id || `${id}-${i}`,
+            timestamp: new Date(m.timestamp).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          }))
+        );
+      }
     } catch (e) {
-      console.error("Load Chat Failed:", e);
+      console.error('Load chat failed:', e);
     }
   };
 
+  // ── Start a new chat ──────────────────────────────────────────
   const handleNewChat = () => {
     setMessages([]);
-    setSessionId('home-' + Math.random().toString(36).slice(2, 9));
+    setSessionId('session-' + Math.random().toString(36).slice(2, 9));
     setIsLoading(false);
   };
 
+  // ── Delete a chat session ─────────────────────────────────────
+  const handleDeleteChat = async (id: string) => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      await fetch('/api/history', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId: id }),
+      });
+      setChatHistoryList(prev => prev.filter(c => c.id !== id));
+      if (id === sessionId) handleNewChat();
+    } catch (e) {
+      console.error('Delete chat failed:', e);
+    }
+  };
+
+  // ── Send message ──────────────────────────────────────────────
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
 
-    const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const userMsg = { id: Date.now().toString(), role: 'user', content, timestamp: timestampStr };
+    // ── Guard: must be logged in ──────────────────────────────
+    if (!user) {
+      setIsAuthOpen(true);   // open login modal if not logged in
+      return;
+    }
 
-    // 1. Update UI IMMEDIATELY
+    const timestampStr = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const userMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      content,
+      timestamp: timestampStr,
+    };
+
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
+    setMessages(prev => [
+      ...prev,
+      { id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: timestampStr },
+    ]);
 
-    const aiMsg = { id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: timestampStr };
-    setMessages(prev => [...prev, aiMsg]);
-
-    // 2. Handle Firestore in background (non-blocking)
-    if (user) {
-      // First message in session? Auto-initialize chat doc
-      if (messages.length === 0) {
-        setDoc(doc(db, "users", user.uid, "chats", sessionId), {
-          title: content.slice(0, 40) + (content.length > 40 ? "..." : ""),
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }, { merge: true }).then(() => {
-          setChatHistoryList(prev => {
-            if (prev.some(c => c.id === sessionId)) return prev;
-            return [{ id: sessionId, title: content.slice(0, 40) + "..." }, ...prev];
-          });
-        }).catch(e => console.error("Firestore init error:", e));
-      }
-
-      // Save user message
-      addDoc(collection(db, "users", user.uid, "chats", sessionId, "messages"), {
-        ...userMsg,
-        timestamp: serverTimestamp()
-      }).catch(e => console.error("Firestore user msg error:", e));
+    // ── Add to sidebar history on first message ───────────────
+    if (messages.length === 0) {
+      setChatHistoryList(prev => {
+        if (prev.some(c => c.id === sessionId)) return prev;
+        return [{ id: sessionId, title: content.slice(0, 40) + (content.length > 40 ? '...' : '') }, ...prev];
+      });
     }
 
     try {
-      // Prepare history for API (exclude the optimistic messages we just added)
-      const apiHistory = messages.slice(-8).map(m => ({ role: m.role, content: m.content }));
+      const token = await user.getIdToken();   // ← always get fresh token
+      const apiHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: content,
-          sessionId,
-          history: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,   // ← always send token
+        },
+        body: JSON.stringify({ message: content, sessionId, history: apiHistory }),
       });
 
-      if (!res.ok) throw new Error('API request failed');
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -160,7 +189,21 @@ export default function Home() {
         for (const line of lines) {
           if (!line.trim() || !line.startsWith('data:')) continue;
           const data = line.replace('data: ', '').trim();
-          if (data === '[DONE]') continue;
+          if (data === '[DONE]') {
+            // ── Refresh sidebar history after response ────────
+            const t = await user.getIdToken();
+            fetch('/api/history', { headers: { Authorization: `Bearer ${t}` } })
+              .then(r => r.json())
+              .then(d => {
+                if (d.sessions?.length > 0) {
+                  setChatHistoryList(d.sessions.map((s: any) => ({
+                    id: s.sessionId,
+                    title: s.title || 'New Chat',
+                  })));
+                }
+              });
+            continue;
+          }
 
           try {
             const parsed = JSON.parse(data);
@@ -169,37 +212,25 @@ export default function Home() {
               setMessages(prev => {
                 const updated = [...prev];
                 const last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
+                if (last?.role === 'assistant') {
                   updated[updated.length - 1] = { ...last, content: fullAIResponse };
                 }
                 return updated;
               });
             }
           } catch (e) {
-            console.error('Error parsing streaming data', e);
+            console.error('Stream parse error:', e);
           }
         }
       }
-
-      // Save Assistant response to Firestore
-      if (user) {
-        addDoc(collection(db, "users", user.uid, "chats", sessionId, "messages"), {
-          role: 'assistant',
-          content: fullAIResponse,
-          timestamp: serverTimestamp()
-        }).catch(e => console.error("Firestore error saving AI response:", e));
-
-        // Update last updated time for history sorting
-        setDoc(doc(db, "users", user.uid, "chats", sessionId), {
-          updatedAt: serverTimestamp()
-        }, { merge: true }).catch(e => console.error("Firestore error updating chat timestamp:", e));
-      }
-
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev => {
         const updated = [...prev];
-        updated[updated.length - 1] = { ...updated[updated.length - 1], content: 'Error: Failed to get response.' };
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: '⚠️ Error: Failed to get response. Please try again.',
+        };
         return updated;
       });
     } finally {
@@ -207,14 +238,24 @@ export default function Home() {
     }
   };
 
+  // ── Show loading spinner while auth initializes ───────────────
+  if (authLoading) {
+    return (
+      <main className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-white/40 text-sm font-mono">Initializing JARVIS...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex h-screen w-full overflow-hidden bg-background text-foreground relative">
       <ParticleBackground />
 
-      {/* Animated Deep Space Gradient Overlay */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.5),rgba(2,6,23,1))] pointer-events-none z-0" />
 
-      {/* Sidebar */}
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
@@ -222,15 +263,14 @@ export default function Home() {
         openAuth={() => setIsAuthOpen(true)}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
         chats={chatHistoryList}
         user={user}
       />
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <div className="flex-1 flex flex-col relative overflow-hidden">
           <ChatInterface messages={messages} isThinking={isLoading} />
-
           <div className="mt-auto">
             <InputPanel
               onSend={handleSendMessage}
@@ -239,30 +279,26 @@ export default function Home() {
             />
           </div>
         </div>
-
       </div>
 
-
-      {/* Overlays / Modals */}
-      <AdvancedControls
-        isOpen={isControlsOpen}
-        onClose={() => setIsControlsOpen(false)}
-      />
-
-      <AnalyticsDashboard
-        isOpen={isAnalyticsOpen}
-        onClose={() => setIsAnalyticsOpen(false)}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
-
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-      />
+      <AdvancedControls isOpen={isControlsOpen} onClose={() => setIsControlsOpen(false)} />
+      <AnalyticsDashboard isOpen={isAnalyticsOpen} onClose={() => setIsAnalyticsOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </main>
   );
 }
+// ```
+
+// ---
+
+// ## Summary of All Changes
+// ```
+// ✅ Removed all Firestore imports       → MongoDB only, no duplicate saves
+// ✅ sessionId set after user loads      → no empty session on startup
+// ✅ Auth guard in handleSendMessage     → opens login modal if not logged in
+// ✅ Token always sent to /api/chat      → secure, server verifies every request
+// ✅ handleDeleteChat added              → delete sessions from MongoDB
+// ✅ Sidebar history refreshes on [DONE] → live updates after each response
+// ✅ authLoading spinner                 → clean UX while Firebase initializes
+// ✅ Removed Firestore dual-save         → single source of truth (MongoDB)

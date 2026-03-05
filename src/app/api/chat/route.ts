@@ -2,6 +2,7 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '../../lib/mongodb';
 import Chat from '../../lib/models/ChatModel';
+import admin from '../../../lib/firebase-admin';              // ← ADD
 
 const PROVIDERS = [
     {
@@ -77,7 +78,6 @@ function scoreResponse(content: string, userMessage: string, latencyMs: number):
     return Math.max(0, Math.min(100, score));
 }
 
-// Standard fetch for Groq, Gemini, HuggingFace
 async function fetchFromProvider(
     provider: typeof PROVIDERS[0],
     messages: Message[]
@@ -126,7 +126,6 @@ async function fetchFromProvider(
     }
 }
 
-// Cohere has different API format so separate function
 async function fetchFromCohere(apiKey: string, messages: Message[]): Promise<ProviderResult> {
     const start = Date.now();
     try {
@@ -172,6 +171,24 @@ async function fetchFromCohere(apiKey: string, messages: Message[]): Promise<Pro
 }
 
 export async function POST(req: NextRequest) {
+
+    // ─── ADD: Verify Firebase Token ──────────────────────────
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
+    let uid = '';
+    let email = '';
+    try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        uid = decoded.uid;
+        email = decoded.email ?? '';
+    } catch {
+        return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
+    }
+    // ─────────────────────────────────────────────────────────
+
     const { message, sessionId, history = [] } = await req.json();
 
     const messages: Message[] = [
@@ -179,17 +196,15 @@ export async function POST(req: NextRequest) {
             role: 'system',
             content: 'You are JARVIS, an advanced AI assistant. Be helpful, intelligent, and concise.',
         },
-        // Filter out the current message from history if it exists there
         ...history.filter((m: any) => m.content !== message).slice(-8),
         { role: 'user', content: message },
     ];
 
-    // All 4 race in parallel
     const results = await Promise.all([
-        fetchFromProvider(PROVIDERS[0], messages), // groq
-        fetchFromProvider(PROVIDERS[1], messages), // gemini
-        fetchFromCohere(process.env.COHERE_API_KEY!, messages), // cohere
-        fetchFromProvider(PROVIDERS[2], messages), // huggingface
+        fetchFromProvider(PROVIDERS[0], messages),
+        fetchFromProvider(PROVIDERS[1], messages),
+        fetchFromCohere(process.env.COHERE_API_KEY!, messages),
+        fetchFromProvider(PROVIDERS[2], messages),
     ]);
 
     const best = results
@@ -225,11 +240,15 @@ export async function POST(req: NextRequest) {
                     await new Promise(r => setTimeout(r, 15));
                 }
 
-                // Non-blocking MongoDB background save
+                // ─── UPDATED: Save with userId + userEmail ────────
                 connectDB().then(() => {
                     Chat.findOneAndUpdate(
-                        { sessionId },
+                        { sessionId, userId: uid },                // ← filter by user
                         {
+                            $set: { userEmail: email },            // ← save email
+                            $setOnInsert: {                        // ← set title on first message
+                                title: message.slice(0, 50),
+                            },
                             $push: {
                                 messages: {
                                     $each: [
@@ -242,6 +261,7 @@ export async function POST(req: NextRequest) {
                         { upsert: true, returnOriginal: false }
                     ).catch(e => console.error("[MongoDB Save Error]", e));
                 }).catch(e => console.error("[MongoDB Conn Error]", e));
+                // ─────────────────────────────────────────────────
 
                 controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 controller.close();

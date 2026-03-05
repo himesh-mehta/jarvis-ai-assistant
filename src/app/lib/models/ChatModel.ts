@@ -7,7 +7,10 @@ export interface IMessage {
 }
 
 export interface IChat extends Document {
+  userId: string;        // ← Firebase UID
+  userEmail: string;     // ← Firebase email
   sessionId: string;
+  title: string;         // ← Chat title 
   messages: IMessage[];
   createdAt: Date;
   updatedAt: Date;
@@ -21,10 +24,15 @@ const MessageSchema = new Schema<IMessage>({
 
 const ChatSchema = new Schema<IChat>(
   {
+    userId:    { type: String, required: true, index: true },  
+    userEmail: { type: String, required: true },               
     sessionId: { type: String, required: true, index: true },
-    messages: [MessageSchema],
+    title:     { type: String, default: 'New Chat' },          
+    messages:  [MessageSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Chat || mongoose.model<IChat>('Chat', ChatSchema);
+export default mongoose.models.Chat
+  ? mongoose.model<IChat>('Chat', ChatSchema)
+  : mongoose.model<IChat>('Chat', ChatSchema);
