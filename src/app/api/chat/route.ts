@@ -2,7 +2,9 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/app/lib/mongodb';
 import Chat from '@/app/lib/models/ChatModel';
+import UserMemory from '@/app/lib/models/UserMemory';
 import admin from '@/lib/firebase-admin';
+import { extractAndSaveMemory } from '@/lib/memoryExtractor';
 
 const PROVIDERS = [
     {
@@ -254,6 +256,20 @@ export async function POST(req: NextRequest) {
     const pdfSources = pdfResult.sources;
 
     if (pdfContext) console.log('[PDF Context] Found from:', pdfSources);
+    // ── Load user memory ────────────────────────────────────
+    await connectDB();
+    const userMemory = await UserMemory.findOne({ userId: uid });
+
+    // Build memory context string
+    let memoryContext = '';
+    if (userMemory?.facts?.length > 0) {
+        const factLines = userMemory.facts
+            .slice(-30) // use last 30 facts
+            .map((f: any) => `- [${f.category}] ${f.fact}`)
+            .join('\n');
+
+        memoryContext = `\n\nWHAT YOU KNOW ABOUT THIS USER:\n${factLines}${userMemory.summary ? `\n\nUser Summary: ${userMemory.summary}` : ''}\n\nUse this knowledge naturally in your responses. Don't explicitly say "I know that you..." unless directly asked. Just naturally personalize your responses.`;
+    }
 
     const messages: Message[] = [
         {
@@ -295,16 +311,23 @@ USER CONTEXT:
 - If they seem frustrated → be extra calm and solution focused
 - If they seem excited → match their energy
 - If they're confused → use simple analogies and examples
+${memoryContext}
 
 ${searchContext ? 'WEB SEARCH: You have been provided real-time web search results. Use them to give accurate, up-to-date answers. Naturally mention sources when using web results — do not list them robotically.' : ''}
 
 ${pdfContext ? `PDF DOCUMENTS: You have been provided relevant content from the user's uploaded PDF files (${pdfSources.join(', ')}). Use this content to answer questions about their documents accurately. Reference the document name naturally in your response.` : ''}
+${searchContext
+                    ? 'WEB SEARCH: You have been provided real-time web search results. Use them to give accurate, up-to-date answers. Naturally mention sources when using web results — do not list them robotically.'
+                    : ''
+                }
 
 CRITICAL LANGUAGE RULE:
 - If the user message starts with [Reply strictly in Hindi only] → reply entirely in Hindi
 - If the user message starts with [Reply strictly in English only] → reply entirely in English
 - Never mix languages unless the user does it themselves`,
         },
+
+        // ── Conversation history ──────────────────────────────
         ...history
             .filter((m: any) => m.content !== message)
             .slice(-8)
@@ -321,6 +344,28 @@ CRITICAL LANGUAGE RULE:
             ].filter(Boolean).join(''),
         },
     ];
+
+        // ── Current user message ──────────────────────────────
+        {
+            role: 'user' as const,
+            content: searchContext
+                ? `${message}\n\n[Real-time web search results — use these to answer accurately:]\n${searchContext}`
+                : message,
+        },
+    ];
+    // ```
+
+    // ---
+
+    // ## What Changed vs Your Version
+    // ```
+    // ✅ Full JARVIS personality added
+    // ✅ searchContext logic kept exactly as is
+    // ✅ Language rules kept exactly as is  
+    // ✅ History filter kept exactly as is
+    // ✅ email injected into USER CONTEXT
+    // ✅ Web search instruction made more natural
+    //    (mentions sources naturally, not robotically)
 
     const results = await Promise.all([
         fetchFromProvider(PROVIDERS[0], messages),
@@ -380,6 +425,15 @@ CRITICAL LANGUAGE RULE:
                         { upsert: true, returnOriginal: false }
                     ).catch(e => console.error("[MongoDB Save Error]", e));
                 }).catch(e => console.error("[MongoDB Conn Error]", e));
+
+                // ── Extract + save memory in background ──────────
+                extractAndSaveMemory(
+                    uid,
+                    email,
+                    message,
+                    best.content,
+                    process.env.GROQ_API_KEY!
+                ); // non-blocking, runs in background
 
                 controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 controller.close();
