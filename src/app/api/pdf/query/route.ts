@@ -3,19 +3,30 @@ import { connectDB } from '@/app/lib/mongodb';
 import mongoose from 'mongoose';
 
 async function getEmbedding(text: string): Promise<number[]> {
-    const res = await fetch('https://api.groq.com/openai/v1/embeddings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
-        },
-        body: JSON.stringify({
-            model: 'nomic-embed-text-v1_5',
-            input: text,
-        }),
-    });
-    const data = await res.json();
-    return data.data[0].embedding;
+    try {
+        const res = await fetch('https://api.groq.com/openai/v1/embeddings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
+            },
+            body: JSON.stringify({
+                model: 'nomic-embed-text-v1_5',
+                input: text,
+            }),
+        });
+        const data = await res.json();
+        
+        if (!data.data || !data.data[0]) {
+            console.error('[Embeddings Error] Invalid response:', data);
+            throw new Error(data.error?.message || 'Failed to get embedding');
+        }
+        
+        return data.data[0].embedding;
+    } catch (err) {
+        console.error('[Embeddings fetch failed]', err);
+        throw err;
+    }
 }
 
 export async function POST(req: NextRequest) {

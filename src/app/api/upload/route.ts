@@ -3,32 +3,51 @@ import admin from '@/lib/firebase-admin';
 import { connectDB } from '@/app/lib/mongodb';
 import Chat from '@/app/lib/models/ChatModel';
 import { validateFile, uploadFileToCloudinary, ACCEPTED_TYPES } from '@/lib/fileUpload';
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import mongoose from 'mongoose';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+// @ts-ignore
+import pdf from 'pdf-parse';
 
 // ✅ Groq embeddings
 async function getEmbedding(text: string): Promise<number[]> {
-    const res = await fetch('https://api.groq.com/openai/v1/embeddings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
-        },
-        body: JSON.stringify({
-            model: 'nomic-embed-text-v1_5',
-            input: text,
-        }),
-    });
-    const data = await res.json();
-    return data.data[0].embedding;
+    try {
+        const res = await fetch('https://api.groq.com/openai/v1/embeddings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
+            },
+            body: JSON.stringify({
+                model: 'nomic-embed-text-v1_5',
+                input: text,
+            }),
+        });
+        const data = await res.json();
+        
+        if (!data.data || !data.data[0]) {
+            console.error('[Embeddings Error] Invalid response:', data);
+            throw new Error(data.error?.message || 'Failed to get embedding');
+        }
+        
+        return data.data[0].embedding;
+    } catch (err) {
+        console.error('[Embeddings fetch failed]', err);
+        throw err;
+    }
+}
+
+// ✅ Simpler splitter to replace problematic LangChain splitters
+function splitTextDirectly(text: string, chunkSize = 1000, chunkOverlap = 200): string[] {
+    const chunks: string[] = [];
+    let i = 0;
+    while (i < text.length) {
+        chunks.push(text.slice(i, i + chunkSize));
+        i += chunkSize - chunkOverlap;
+        if (i < 0) break; // overlap too large
+    }
+    return chunks;
 }
 
 export async function POST(req: NextRequest) {
-    // ── Verify Firebase Token ──────────────────────────────────
+    // ── Verify Firebase Token ──────────────────────────────
     const token = req.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -41,7 +60,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // ── Parse FormData ─────────────────────────────────────────
+    // ── Parse FormData ─────────────────────────────────────
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const sessionId = formData.get('sessionId') as string;
@@ -49,14 +68,14 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     if (!sessionId) return NextResponse.json({ error: 'No sessionId provided' }, { status: 400 });
 
-    // ── Validate file ──────────────────────────────────────────
+    // ── Validate file ──────────────────────────────────────
     const validation = validateFile(file);
     if (!validation.valid) {
         return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     try {
-        // ── Upload to Cloudinary ───────────────────────────────
+        // ── Upload to Cloudinary ───────────────────────────
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
         const { url, publicId } = await uploadFileToCloudinary(buffer, file.name, file.type);
@@ -64,23 +83,16 @@ export async function POST(req: NextRequest) {
         const fileInfo = ACCEPTED_TYPES[file.type];
         const isPDF = file.type === 'application/pdf';
 
-        // ── If PDF → process with LangChain ───────────────────
+        // ── If PDF → process with pdf-parse (Direct instead of LangChain for stability) ──
         let pdfChunks = 0;
         if (isPDF) {
             try {
-                // Save temp file
-                const tmpPath = path.join(os.tmpdir(), `${Date.now()}.pdf`);
-                fs.writeFileSync(tmpPath, buffer);
+                // Parse PDF text
+                const pdfData = await pdf(buffer);
+                const fullText = pdfData.text;
 
-                // Load + split PDF
-                const loader = new PDFLoader(tmpPath);
-                const docs = await loader.load();
-
-                const splitter = new RecursiveCharacterTextSplitter({
-                    chunkSize: 1000,
-                    chunkOverlap: 200,
-                });
-                const chunks = await splitter.splitDocuments(docs);
+                // Split text into chunks
+                const chunks = splitTextDirectly(fullText);
                 pdfChunks = chunks.length;
 
                 // Store embeddings in MongoDB
@@ -89,33 +101,31 @@ export async function POST(req: NextRequest) {
                 const collection = conn.connection.db.collection('pdfdocs');
 
                 const docsToInsert = await Promise.all(
-                    chunks.map(async (chunk) => {
-                        const embedding = await getEmbedding(chunk.pageContent);
+                    chunks.map(async (content) => {
+                        const embedding = await getEmbedding(content);
                         return {
                             userId: uid,
                             sessionId,
                             fileName: file.name,
                             cloudinaryUrl: url,
-                            content: chunk.pageContent,
+                            content,
                             embedding,
                             createdAt: new Date(),
                         };
                     })
                 );
 
-                await collection.insertMany(docsToInsert);
-
-                // Cleanup temp file
-                fs.unlinkSync(tmpPath);
+                if (docsToInsert.length > 0) {
+                    await collection.insertMany(docsToInsert);
+                }
 
                 console.log(`[PDF] Processed ${pdfChunks} chunks for ${file.name}`);
             } catch (pdfErr: any) {
                 console.error('[PDF Processing Error]', pdfErr);
-                // Don't fail the whole upload if PDF processing fails
             }
         }
 
-        // ── Save to MongoDB chat ───────────────────────────────
+        // ── Save to MongoDB chat ───────────────────────────
         await connectDB();
         await Chat.findOneAndUpdate(
             { sessionId, userId: uid },
@@ -146,7 +156,7 @@ export async function POST(req: NextRequest) {
                     },
                 },
             },
-            { upsert: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         return NextResponse.json({

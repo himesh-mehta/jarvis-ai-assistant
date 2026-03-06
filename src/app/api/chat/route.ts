@@ -392,7 +392,7 @@ ${pdfContext ? `PDF DOCUMENTS: You have been provided relevant content from the 
                                 },
                             },
                         },
-                        { upsert: true, returnOriginal: false }
+                        { upsert: true, returnDocument: 'after' }
                     ).catch(e => console.error("[MongoDB Save Error]", e));
                 }).catch(e => console.error("[MongoDB Conn Error]", e));
 
