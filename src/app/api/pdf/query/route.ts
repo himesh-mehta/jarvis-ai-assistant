@@ -11,7 +11,7 @@ async function getEmbedding(text: string): Promise<number[]> {
                 Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
             },
             body: JSON.stringify({
-                model: 'nomic-embed-text-v1_5',
+                model: 'nomic-embed-text-v1.5',
                 input: text,
             }),
         });

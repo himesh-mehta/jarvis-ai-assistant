@@ -3,8 +3,8 @@ import admin from '@/lib/firebase-admin';
 import { connectDB } from '@/app/lib/mongodb';
 import Chat from '@/app/lib/models/ChatModel';
 import { validateFile, uploadFileToCloudinary, ACCEPTED_TYPES } from '@/lib/fileUpload';
-// @ts-ignore
-import pdf from 'pdf-parse';
+// Dynamically require pdf-parse inside the handler to prevent bundling issues in Next.js App Router
+const pdf = require('pdf-parse');
 
 // ✅ Groq embeddings
 async function getEmbedding(text: string): Promise<number[]> {
@@ -16,7 +16,7 @@ async function getEmbedding(text: string): Promise<number[]> {
                 Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
             },
             body: JSON.stringify({
-                model: 'nomic-embed-text-v1_5',
+                model: 'nomic-embed-text-v1.5',
                 input: text,
             }),
         });
