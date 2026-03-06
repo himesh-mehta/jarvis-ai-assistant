@@ -14,7 +14,8 @@ import {
     Monitor,
     Brain,
     Bot,
-    Sparkles
+    Sparkles,
+    RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
     return (
@@ -53,6 +55,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                                     <TabTrigger value="account" icon={<User className="w-4 h-4" />} label="Account" />
                                     <TabTrigger value="ai" icon={<Brain className="w-4 h-4" />} label="AI Model" />
                                     <TabTrigger value="api" icon={<Key className="w-4 h-4" />} label="API Keys" />
+                                    <TabTrigger value="memory" icon={<Brain className="w-4 h-4 text-neon-blue" />} label="Memory Bank" />
                                     <TabTrigger value="theme" icon={<Palette className="w-4 h-4" />} label="Appearance" />
                                     <TabTrigger value="security" icon={<Shield className="w-4 h-4" />} label="Data & Privacy" />
                                 </TabsList>
@@ -112,6 +115,10 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                                         </div>
                                     </TabsContent>
 
+                                    <TabsContent value="memory" className="mt-0">
+                                        <MemoryPanel />
+                                    </TabsContent>
+
                                     <TabsContent value="theme" className="space-y-6 mt-0">
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
@@ -155,6 +162,140 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 </motion.div>
             )}
         </AnimatePresence>
+    );
+};
+
+// ── Memory Panel inside SettingsModal ──────
+const MemoryPanel = () => {
+    const { user } = useAuth();
+    const [memory, setMemory] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(false);
+
+    const loadMemory = async () => {
+        if (!user) return;
+        setLoading(true);
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch('/api/memory', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setMemory(data.memory);
+        } catch (error) {
+            console.error("Failed to load memory:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteFact = async (factId: string) => {
+        if (!user) return;
+        const token = await user.getIdToken();
+        await fetch('/api/memory', {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ factId }),
+        });
+        loadMemory();
+    };
+
+    const clearAll = async () => {
+        if (!user || !confirm('Clear all JARVIS memory? This cannot be undone.')) return;
+        const token = await user.getIdToken();
+        await fetch('/api/memory', {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clearAll: true }),
+        });
+        setMemory(null);
+    };
+
+    React.useEffect(() => { loadMemory(); }, [user]);
+
+    const CATEGORY_COLORS: Record<string, string> = {
+        personal: 'bg-blue-500/20   text-blue-300   border-blue-500/30',
+        preference: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+        technical: 'bg-green-500/20  text-green-300  border-green-500/30',
+        behavioral: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+        goal: 'bg-pink-500/20   text-pink-300   border-pink-500/30',
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-neon-blue" />
+                    <h3 className="text-sm font-semibold text-white">Memory Bank</h3>
+                    <span className="text-[10px] text-white/40 font-mono">
+                        {memory?.facts?.length || 0} facts stored
+                    </span>
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={loadMemory}
+                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                    >
+                        <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+                    </button>
+                    {memory?.facts?.length > 0 && (
+                        <button
+                            onClick={clearAll}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-red-400 hover:bg-red-500/20 text-xs transition-all border border-red-500/20"
+                        >
+                            <Trash2 className="w-3 h-3" />
+                            Clear All
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Summary */}
+            {memory?.summary && (
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <p className="text-[11px] text-white/50 font-mono mb-1">USER SYNOPSIS</p>
+                    <p className="text-sm text-white/80">{memory.summary}</p>
+                </div>
+            )}
+
+            {/* Facts list */}
+            {loading ? (
+                <div className="flex items-center justify-center py-8">
+                    <div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" />
+                </div>
+            ) : memory?.facts?.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 no-scrollbar">
+                    {memory.facts.map((fact: any) => (
+                        <div
+                            key={fact._id}
+                            className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-white/5 border border-white/5 group hover:border-white/10 transition-all"
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className={cn(
+                                    "text-[9px] px-1.5 py-0.5 rounded-full border font-mono uppercase tracking-wide flex-shrink-0",
+                                    CATEGORY_COLORS[fact.category] || ''
+                                )}>
+                                    {fact.category}
+                                </span>
+                                <p className="text-xs text-white/70 truncate">{fact.fact}</p>
+                            </div>
+                            <button
+                                onClick={() => deleteFact(fact._id)}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
+                            >
+                                <Trash2 className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-8 text-white/30 text-sm">
+                    <Brain className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p>No memories yet</p>
+                    <p className="text-xs mt-1 text-white/20">JARVIS will learn about you as you chat</p>
+                </div>
+            )}
+        </div>
     );
 };
 

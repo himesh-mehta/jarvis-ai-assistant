@@ -2,7 +2,9 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/app/lib/mongodb';
 import Chat from '@/app/lib/models/ChatModel';
+import UserMemory from '@/app/lib/models/UserMemory';
 import admin from '@/lib/firebase-admin';
+import { extractAndSaveMemory } from '@/lib/memoryExtractor';
 
 const PROVIDERS = [
     {
@@ -232,10 +234,25 @@ export async function POST(req: NextRequest) {
         searchContext = await fetchWebSearch(message, baseUrl);
     }
 
-const messages: Message[] = [
-    {
-        role: 'system',
-        content: `You are JARVIS — a highly intelligent, witty AI assistant inspired by Tony Stark's JARVIS.
+    // ── Load user memory ────────────────────────────────────
+    await connectDB();
+    const userMemory = await UserMemory.findOne({ userId: uid });
+
+    // Build memory context string
+    let memoryContext = '';
+    if (userMemory?.facts?.length > 0) {
+        const factLines = userMemory.facts
+            .slice(-30) // use last 30 facts
+            .map((f: any) => `- [${f.category}] ${f.fact}`)
+            .join('\n');
+
+        memoryContext = `\n\nWHAT YOU KNOW ABOUT THIS USER:\n${factLines}${userMemory.summary ? `\n\nUser Summary: ${userMemory.summary}` : ''}\n\nUse this knowledge naturally in your responses. Don't explicitly say "I know that you..." unless directly asked. Just naturally personalize your responses.`;
+    }
+
+    const messages: Message[] = [
+        {
+            role: 'system',
+            content: `You are JARVIS — a highly intelligent, witty AI assistant inspired by Tony Stark's JARVIS.
 
 PERSONALITY:
 - Talk like a brilliant, confident friend — not a textbook or customer support bot
@@ -272,48 +289,49 @@ USER CONTEXT:
 - If they seem frustrated → be extra calm and solution focused
 - If they seem excited → match their energy
 - If they're confused → use simple analogies and examples
+${memoryContext}
 
 ${searchContext
-    ? 'WEB SEARCH: You have been provided real-time web search results. Use them to give accurate, up-to-date answers. Naturally mention sources when using web results — do not list them robotically.'
-    : ''
-}
+                    ? 'WEB SEARCH: You have been provided real-time web search results. Use them to give accurate, up-to-date answers. Naturally mention sources when using web results — do not list them robotically.'
+                    : ''
+                }
 
 CRITICAL LANGUAGE RULE:
 - If the user message starts with [Reply strictly in Hindi only] → reply entirely in Hindi
 - If the user message starts with [Reply strictly in English only] → reply entirely in English  
 - Never mix languages unless the user does it themselves`,
-    },
+        },
 
-    // ── Conversation history ──────────────────────────────
-    ...history
-        .filter((m: any) => m.content !== message)
-        .slice(-8)
-        .map((m: any) => ({
-            role:    m.role,
-            content: m.content,
-        })),
+        // ── Conversation history ──────────────────────────────
+        ...history
+            .filter((m: any) => m.content !== message)
+            .slice(-8)
+            .map((m: any) => ({
+                role: m.role,
+                content: m.content,
+            })),
 
-    // ── Current user message ──────────────────────────────
-    {
-        role: 'user' as const,
-        content: searchContext
-            ? `${message}\n\n[Real-time web search results — use these to answer accurately:]\n${searchContext}`
-            : message,
-    },
-];
-// ```
+        // ── Current user message ──────────────────────────────
+        {
+            role: 'user' as const,
+            content: searchContext
+                ? `${message}\n\n[Real-time web search results — use these to answer accurately:]\n${searchContext}`
+                : message,
+        },
+    ];
+    // ```
 
-// ---
+    // ---
 
-// ## What Changed vs Your Version
-// ```
-// ✅ Full JARVIS personality added
-// ✅ searchContext logic kept exactly as is
-// ✅ Language rules kept exactly as is  
-// ✅ History filter kept exactly as is
-// ✅ email injected into USER CONTEXT
-// ✅ Web search instruction made more natural
-//    (mentions sources naturally, not robotically)
+    // ## What Changed vs Your Version
+    // ```
+    // ✅ Full JARVIS personality added
+    // ✅ searchContext logic kept exactly as is
+    // ✅ Language rules kept exactly as is  
+    // ✅ History filter kept exactly as is
+    // ✅ email injected into USER CONTEXT
+    // ✅ Web search instruction made more natural
+    //    (mentions sources naturally, not robotically)
 
     const results = await Promise.all([
         fetchFromProvider(PROVIDERS[0], messages),
@@ -377,6 +395,15 @@ CRITICAL LANGUAGE RULE:
                     ).catch(e => console.error("[MongoDB Save Error]", e));
                 }).catch(e => console.error("[MongoDB Conn Error]", e));
                 // ─────────────────────────────────────────
+
+                // ── Extract + save memory in background ──────────
+                extractAndSaveMemory(
+                    uid,
+                    email,
+                    message,
+                    best.content,
+                    process.env.GROQ_API_KEY!
+                ); // non-blocking, runs in background
 
                 controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 controller.close();
