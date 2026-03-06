@@ -255,7 +255,7 @@ export const InputPanel = ({
     const hasAttachment = !!selectedImage || !!selectedFile;
 
     return (
-        <div className="pb-4 px-4 lg:px-6 bg-transparent">
+        <div className="pb-2 px-2 sm:pb-4 sm:px-4 lg:px-6 bg-transparent">
 
             {/* ── Hidden: image input ── */}
             <input

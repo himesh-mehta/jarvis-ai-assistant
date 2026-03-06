@@ -56,7 +56,9 @@ const THINKING_MESSAGES = [
     "Formulating response...",
     "Cross-referencing data...",
     "One moment...",
-];// ── ChatInterface Component ───────────────────────────────
+];
+
+// ── ChatInterface Component ───────────────────────────────
 export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatInterfaceProps) => {
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [autoScroll, setAutoScroll] = useState(true);
@@ -119,17 +121,17 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8 }}
-                            className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+                            className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4"
                         >
                             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-600/10 flex items-center justify-center border border-white/5 mb-8 group hover:border-blue-500/30 transition-all duration-500">
                                 <Sparkles className="w-8 h-8 text-blue-400 group-hover:scale-110 transition-transform" />
                             </div>
-                            <h1 className="text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-purple drop-shadow-[0_0_30px_rgba(0,210,255,0.3)] mb-3">
+                            <h1 className="text-4xl sm:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-purple drop-shadow-[0_0_30px_rgba(0,210,255,0.3)] mb-3">
                                 JARVIS
                             </h1>
 
                             {onSuggestionClick && (
-                                <div className="grid grid-cols-2 gap-2 mt-8 w-full max-w-lg">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-8 w-full max-w-lg">
                                     {SUGGESTIONS.map((s, i) => (
                                         <motion.button
                                             key={i}
@@ -174,10 +176,10 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex items-start gap-4"
+                            className="flex items-start gap-3 sm:gap-4"
                         >
-                            <Avatar className="w-7 h-7 border border-neon-blue/20 bg-blue-950/50 flex items-center justify-center overflow-hidden">
-                                <Bot className="w-4 h-4 text-neon-blue drop-shadow-[0_0_8px_rgba(0,210,255,0.5)]" />
+                            <Avatar className="w-6 h-6 sm:w-7 sm:h-7 border border-neon-blue/20 bg-blue-950/50 flex items-center justify-center overflow-hidden">
+                                <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neon-blue drop-shadow-[0_0_8px_rgba(0,210,255,0.5)]" />
                             </Avatar>
                             <div className="flex flex-col gap-2">
                                 <p className="text-sm font-medium text-white/40 italic flex items-center gap-2">
@@ -216,12 +218,12 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                         initial={{ opacity: 0, scale: 0.8, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                        className="absolute bottom-8 right-8 z-50"
+                        className="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 z-50"
                     >
                         <Button
                             onClick={() => scrollToBottom()}
                             size="icon"
-                            className="h-10 w-10 rounded-full bg-blue-600/80 hover:bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] backdrop-blur-md border border-white/10"
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-600/80 hover:bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] backdrop-blur-md border border-white/10"
                         >
                             <ArrowDown className="w-5 h-5" />
                         </Button>
@@ -250,11 +252,11 @@ const MessageItem = ({ message }: { message: Message }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className={cn("flex gap-3 group", isUser ? "flex-row-reverse" : "flex-row")}
+            className={cn("flex gap-2 sm:gap-3 group", isUser ? "flex-row-reverse" : "flex-row")}
         >
             {/* ── Avatar ── */}
             <Avatar className={cn(
-                "w-7 h-7 flex-shrink-0 mt-0.5 flex items-center justify-center overflow-hidden transition-all duration-300 hover:scale-110",
+                "w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0 mt-0.5 flex items-center justify-center overflow-hidden transition-all duration-300 hover:scale-110",
                 isUser
                     ? "bg-purple-600/20 border border-purple-500/30"
                     : "bg-blue-600/20 border border-blue-500/30"
@@ -262,15 +264,15 @@ const MessageItem = ({ message }: { message: Message }) => {
                 {isUser ? (
                     user?.photoURL
                         ? <AvatarImage src={user.photoURL} alt="User" className="rounded-full object-cover" />
-                        : <User className="w-4 h-4 text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.4)]" />
+                        : <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.4)]" />
                 ) : (
-                    <Bot className="w-4 h-4 text-blue-400 drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]" />
+                    <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400 drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]" />
                 )}
             </Avatar>
 
             {/* ── Bubble ── */}
             <div className={cn(
-                "flex flex-col gap-2 max-w-[85%]",
+                "flex flex-col gap-2 max-w-[95%] sm:max-w-[85%]",
                 isUser ? "items-end" : "items-start"
             )}>
                 <div className={cn(
@@ -402,7 +404,7 @@ const MessageItem = ({ message }: { message: Message }) => {
 
                 {/* ── Action Buttons ── */}
                 <div className={cn(
-                    "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
+                    "flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity",
                     isUser ? "flex-row-reverse" : "flex-row"
                 )}>
                     <Button

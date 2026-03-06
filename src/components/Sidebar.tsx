@@ -57,6 +57,7 @@ interface SidebarProps {
     onDeleteChat?: (id: string) => void;
     onRenameChat?: (id: string, newTitle: string) => void;
     onPinChat?: (id: string) => void;
+    onMobileClose?: () => void;
     chats: { id: string | number; title: string; pinned?: boolean }[];
     user: FirebaseUser | null;
 }
@@ -98,7 +99,8 @@ export const Sidebar = ({
     onRenameChat,
     onPinChat,
     chats,
-    user
+    user,
+    onMobileClose
 }: SidebarProps) => {
     const router = useRouter();
     const { logout } = useAuth();
@@ -316,7 +318,7 @@ export const Sidebar = ({
             <motion.aside
                 initial={false}
                 animate={{ width: isCollapsed ? 52 : 260 }}
-                className="h-screen flex flex-col bg-[#020617]/90 backdrop-blur-2xl relative z-50 overflow-hidden border-r border-white/10"
+                className="flex h-screen flex-col bg-[#020617]/90 backdrop-blur-2xl relative z-50 overflow-hidden border-r border-white/10"
             >
                 <div className="h-14 flex items-center justify-between px-3 flex-shrink-0">
                     {!isCollapsed && (
@@ -331,10 +333,10 @@ export const Sidebar = ({
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        onClick={() => onMobileClose ? onMobileClose() : setIsCollapsed(!isCollapsed)}
                         className={cn("text-white/40 hover:text-white hover:bg-white/5 rounded-lg h-9 w-9", isCollapsed && "w-full")}
                     >
-                        <PanelLeft className="w-5 h-5" />
+                        {onMobileClose ? <X className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
                     </Button>
                 </div>
 
