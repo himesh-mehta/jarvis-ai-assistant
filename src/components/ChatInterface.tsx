@@ -14,19 +14,36 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";   // ← ADD
+import { useAuth } from "@/context/AuthContext";
 
+// ── Message Interface ─────────────────────────────────────
 interface Message {
     id: string;
     role: "user" | "assistant";
     content: string;
     timestamp: string;
-    imageUrl?: string;          // ← ADD
+    imageUrl?: string;
+    fileUrl?: string;
+    fileName?: string;
+    fileType?: string;
+    fileSize?: number;
     tokens?: number;
     responseTime?: string;
 }
 
-export const ChatInterface = ({ messages, isThinking }: { messages: Message[], isThinking: boolean }) => {
+// ── File Icons Map ────────────────────────────────────────
+const FILE_ICONS: Record<string, string> = {
+    pdf: '📄',
+    docx: '📝',
+    txt: '📃',
+    csv: '📊',
+};
+
+// ── ChatInterface Component ───────────────────────────────
+export const ChatInterface = ({ messages, isThinking }: {
+    messages: Message[];
+    isThinking: boolean;
+}) => {
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [autoScroll, setAutoScroll] = useState(true);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -57,6 +74,8 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                 onScroll={handleScroll}
             >
                 <div className="max-w-4xl mx-auto space-y-8 pb-0">
+
+                    {/* ── Empty State ── */}
                     {messages.length === 0 ? (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -78,17 +97,21 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                             className="pt-2 pb-12 flex items-center justify-center"
                         >
                             <div className="px-3 py-1 rounded-full border border-white/80 bg-white/5 backdrop-blur-sm">
-                                <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em]">JARVIS</span>
+                                <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em]">
+                                    JARVIS
+                                </span>
                             </div>
                         </motion.div>
                     )}
 
+                    {/* ── Messages ── */}
                     <AnimatePresence initial={false}>
                         {messages.map((message) => (
                             <MessageItem key={message.id} message={message} />
                         ))}
                     </AnimatePresence>
 
+                    {/* ── Thinking Indicator ── */}
                     {isThinking && (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
@@ -104,17 +127,31 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
                                     JARVIS is thinking...
                                 </p>
                                 <div className="flex gap-1">
-                                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-neon-blue rounded-full" />
-                                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-neon-purple rounded-full" />
-                                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-neon-blue rounded-full" />
+                                    <motion.span
+                                        animate={{ scale: [1, 1.2, 1] }}
+                                        transition={{ repeat: Infinity, duration: 1 }}
+                                        className="w-1.5 h-1.5 bg-neon-blue rounded-full"
+                                    />
+                                    <motion.span
+                                        animate={{ scale: [1, 1.2, 1] }}
+                                        transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                                        className="w-1.5 h-1.5 bg-neon-purple rounded-full"
+                                    />
+                                    <motion.span
+                                        animate={{ scale: [1, 1.2, 1] }}
+                                        transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                                        className="w-1.5 h-1.5 bg-neon-blue rounded-full"
+                                    />
                                 </div>
                             </div>
                         </motion.div>
                     )}
+
                     <div ref={bottomRef} className="h-0" />
                 </div>
             </ScrollArea>
 
+            {/* ── Scroll to Bottom Button ── */}
             <AnimatePresence>
                 {showScrollButton && (
                     <motion.div
@@ -137,11 +174,11 @@ export const ChatInterface = ({ messages, isThinking }: { messages: Message[], i
     );
 };
 
-// ─────────────────────────────────────────────────────────
+// ── MessageItem Component ─────────────────────────────────
 const MessageItem = ({ message }: { message: Message }) => {
     const isUser = message.role === "user";
     const [copied, setCopied] = useState(false);
-    const { user } = useAuth();                    // ← ADD
+    const { user } = useAuth();
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(message.content);
@@ -160,10 +197,11 @@ const MessageItem = ({ message }: { message: Message }) => {
             {/* ── Avatar ── */}
             <Avatar className={cn(
                 "w-7 h-7 flex-shrink-0 mt-0.5 flex items-center justify-center overflow-hidden transition-all duration-300 hover:scale-110",
-                isUser ? "bg-purple-600/20 border border-purple-500/30" : "bg-blue-600/20 border border-blue-500/30"
+                isUser
+                    ? "bg-purple-600/20 border border-purple-500/30"
+                    : "bg-blue-600/20 border border-blue-500/30"
             )}>
                 {isUser ? (
-                    // Show Firebase profile photo if available         ← ADD
                     user?.photoURL
                         ? <AvatarImage src={user.photoURL} alt="User" className="rounded-full object-cover" />
                         : <User className="w-4 h-4 text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.4)]" />
@@ -172,6 +210,7 @@ const MessageItem = ({ message }: { message: Message }) => {
                 )}
             </Avatar>
 
+            {/* ── Bubble ── */}
             <div className={cn(
                 "flex flex-col gap-2 max-w-[85%]",
                 isUser ? "items-end" : "items-start"
@@ -182,6 +221,7 @@ const MessageItem = ({ message }: { message: Message }) => {
                         ? "rounded-tr-none bg-blue-600/10 border-blue-500/20 hover:border-blue-500/40 hover:bg-blue-600/15"
                         : "rounded-tl-none bg-white/5 border-white/10 group-hover:border-neon-blue/40 group-hover:bg-white/[0.08]"
                 )}>
+                    {/* Glow effects */}
                     {!isUser && (
                         <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-blue-500/0 rounded-2xl blur opacity-0 group-hover:opacity-40 transition duration-500" />
                     )}
@@ -189,7 +229,7 @@ const MessageItem = ({ message }: { message: Message }) => {
                         <div className="absolute -inset-0.5 bg-blue-500/0 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500 group-hover:bg-blue-500/10" />
                     )}
 
-                    {/* ── Image Preview (shown above text) ── ← ADD */}
+                    {/* ── Image Preview ── */}
                     {message.imageUrl && (
                         <div className="mb-3">
                             <img
@@ -201,27 +241,65 @@ const MessageItem = ({ message }: { message: Message }) => {
                         </div>
                     )}
 
+                    {/* ── File Card ── */}
+                    {message.fileUrl && message.fileName && (
+                        <a
+                            href={message.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 mb-3 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all group/file"
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xl flex-shrink-0">
+                                {FILE_ICONS[message.fileType || ''] || '📎'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">
+                                    {message.fileName}
+                                </p>
+                                <p className="text-[10px] text-white/40 font-mono uppercase mt-0.5">
+                                    {message.fileType} · {message.fileSize
+                                        ? (message.fileSize / 1024).toFixed(1) + ' KB'
+                                        : ''}
+                                </p>
+                            </div>
+                            <div className="text-white/20 group-hover/file:text-neon-blue transition-colors text-xs">
+                                ↗
+                            </div>
+                        </a>
+                    )}
+
                     {/* ── Message Text ── */}
                     <div className="prose prose-invert prose-sm max-w-none">
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeHighlight]}
                             components={{
-                                h1: ({ node, ...props }) => <h1 className="text-xl font-bold mb-4 text-neon-blue" {...props} />,
-                                h2: ({ node, ...props }) => <h2 className="text-lg font-bold mb-3 text-white" {...props} />,
+                                h1: ({ node, ...props }) => (
+                                    <h1 className="text-xl font-bold mb-4 text-neon-blue" {...props} />
+                                ),
+                                h2: ({ node, ...props }) => (
+                                    <h2 className="text-lg font-bold mb-3 text-white" {...props} />
+                                ),
                                 code: ({ node, inline, className, children, ...props }: any) => {
                                     const match = /language-(\w+)/.exec(className || '');
                                     return !inline && match ? (
                                         <div className="relative group/code my-4">
                                             <div className="absolute top-0 right-0 p-2 flex gap-2">
-                                                <span className="text-[10px] text-white/30 uppercase tracking-widest">{match[1]}</span>
+                                                <span className="text-[10px] text-white/30 uppercase tracking-widest">
+                                                    {match[1]}
+                                                </span>
                                             </div>
                                             <pre className="!bg-[#0d1117] !p-4 rounded-xl border border-white/5 overflow-x-auto">
-                                                <code className={className} {...props}>{children}</code>
+                                                <code className={className} {...props}>
+                                                    {children}
+                                                </code>
                                             </pre>
                                         </div>
                                     ) : (
-                                        <code className="bg-white/10 px-1.5 py-0.5 rounded text-neon-blue font-mono text-xs" {...props}>
+                                        <code
+                                            className="bg-white/10 px-1.5 py-0.5 rounded text-neon-blue font-mono text-xs"
+                                            {...props}
+                                        >
                                             {children}
                                         </code>
                                     );
@@ -231,8 +309,12 @@ const MessageItem = ({ message }: { message: Message }) => {
                                         <table className="w-full text-left text-xs" {...props} />
                                     </div>
                                 ),
-                                th: ({ node, ...props }) => <th className="p-2 bg-white/5 font-bold border-b border-white/10" {...props} />,
-                                td: ({ node, ...props }) => <td className="p-2 border-b border-white/5" {...props} />,
+                                th: ({ node, ...props }) => (
+                                    <th className="p-2 bg-white/5 font-bold border-b border-white/10" {...props} />
+                                ),
+                                td: ({ node, ...props }) => (
+                                    <td className="p-2 border-b border-white/5" {...props} />
+                                ),
                             }}
                         >
                             {message.content}
@@ -244,11 +326,17 @@ const MessageItem = ({ message }: { message: Message }) => {
                         "flex items-center gap-3 mt-1.5 text-[10px] text-white/20 font-mono",
                         isUser ? "justify-end" : "justify-start"
                     )}>
-                        <span className="flex items-center gap-1"><Clock size={10} /> {message.timestamp}</span>
+                        <span className="flex items-center gap-1">
+                            <Clock size={10} /> {message.timestamp}
+                        </span>
                         {!isUser && message.tokens && (
                             <>
-                                <span className="flex items-center gap-1"><Zap size={10} /> {message.tokens} tokens</span>
-                                <span className="flex items-center gap-1">{message.responseTime}</span>
+                                <span className="flex items-center gap-1">
+                                    <Zap size={10} /> {message.tokens} tokens
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    {message.responseTime}
+                                </span>
                             </>
                         )}
                     </div>
@@ -259,8 +347,16 @@ const MessageItem = ({ message }: { message: Message }) => {
                     "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
                     isUser ? "flex-row-reverse" : "flex-row"
                 )}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white/30 hover:text-white" onClick={copyToClipboard}>
-                        {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-white/30 hover:text-white"
+                        onClick={copyToClipboard}
+                    >
+                        {copied
+                            ? <Check className="w-3 h-3 text-green-400" />
+                            : <Copy className="w-3 h-3" />
+                        }
                     </Button>
                     {!isUser && (
                         <>

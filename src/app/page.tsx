@@ -26,7 +26,7 @@ export default function Home() {
   const [chatHistoryList, setChatHistoryList] = useState<{ id: string; title: string; pinned?: boolean }[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // ── Generate sessionId only after user is ready ──────────────
+  // ── Generate sessionId after user loads ──────────────────
   useEffect(() => {
     if (user) {
       setSessionId('session-' + Math.random().toString(36).slice(2, 9));
@@ -37,30 +37,14 @@ export default function Home() {
     }
   }, [user]);
 
-  // ── Sync chat history from MongoDB when user logs in ─────────
+  // ── Sync history on login ─────────────────────────────────
   useEffect(() => {
     if (!user || authLoading) return;
-    const syncHistory = async () => {
-      try {
-        const token = await user.getIdToken();
-        const res   = await fetch('/api/history', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data.sessions?.length > 0) {
-          setChatHistoryList(
-            data.sessions.map((s: any) => ({ id: s.sessionId, title: s.title || 'New Chat' }))
-          );
-        }
-      } catch (e) {
-        console.error('History sync failed:', e);
-      }
-    };
     syncHistory();
   }, [user, authLoading]);
 
-  // ── Helper: refresh sidebar history ──────────────────────────
-  const refreshHistory = async () => {
+  // ── Helper: refresh sidebar ───────────────────────────────
+  const syncHistory = async () => {
     if (!user) return;
     try {
       const token = await user.getIdToken();
@@ -69,18 +53,20 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.sessions?.length > 0) {
-        setChatHistoryList(data.sessions.map((s: any) => ({
-          id:     s.sessionId,
-          title:  s.title || 'New Chat',
-          pinned: s.pinned || false,
-        })));
+        setChatHistoryList(
+          data.sessions.map((s: any) => ({
+            id:     s.sessionId,
+            title:  s.title || 'New Chat',
+            pinned: s.pinned || false,
+          }))
+        );
       }
     } catch (e) {
-      console.error('Refresh history failed:', e);
+      console.error('History sync failed:', e);
     }
   };
 
-  // ── Load a specific chat session ─────────────────────────────
+  // ── Load a chat session ───────────────────────────────────
   const handleSelectChat = async (id: string, title: string) => {
     if (!user) return;
     setSessionId(id);
@@ -107,14 +93,14 @@ export default function Home() {
     }
   };
 
-  // ── Start a new chat ──────────────────────────────────────────
+  // ── New chat ──────────────────────────────────────────────
   const handleNewChat = () => {
     setMessages([]);
     setSessionId('session-' + Math.random().toString(36).slice(2, 9));
     setIsLoading(false);
   };
 
-  // ── Delete a chat session ─────────────────────────────────────
+  // ── Delete chat ───────────────────────────────────────────
   const handleDeleteChat = async (id: string) => {
     if (!user) return;
     try {
@@ -132,14 +118,18 @@ export default function Home() {
   };
 
   const handleRenameChat = (id: string, newTitle: string) => {
-    setChatHistoryList(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
+    setChatHistoryList(prev =>
+      prev.map(c => c.id === id ? { ...c, title: newTitle } : c)
+    );
   };
 
   const handlePinChat = (id: string) => {
-    setChatHistoryList(prev => prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c));
+    setChatHistoryList(prev =>
+      prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c)
+    );
   };
 
-  // ── Stop generation ───────────────────────────────────────────
+  // ── Stop generation ───────────────────────────────────────
   const handleStopGeneration = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -148,14 +138,21 @@ export default function Home() {
     }
   };
 
-  // ── Send text message ─────────────────────────────────────────
+  // ── Send text message ─────────────────────────────────────
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
-
     if (!user) { setIsAuthOpen(true); return; }
 
-    const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const userMsg = { id: Date.now().toString(), role: 'user', content, timestamp: timestampStr };
+    const timestampStr = new Date().toLocaleTimeString([], {
+      hour: '2-digit', minute: '2-digit',
+    });
+
+    const userMsg = {
+      id:        Date.now().toString(),
+      role:      'user' as const,
+      content,
+      timestamp: timestampStr,
+    };
 
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
@@ -165,7 +162,7 @@ export default function Home() {
 
     setMessages(prev => [
       ...prev,
-      { id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: timestampStr },
+      { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '', timestamp: timestampStr },
     ]);
 
     if (messages.length === 0) {
@@ -190,7 +187,7 @@ export default function Home() {
 
       const reader  = res.body!.getReader();
       const decoder = new TextDecoder();
-      let accumulated  = '';
+      let accumulated    = '';
       let fullAIResponse = '';
 
       while (true) {
@@ -204,7 +201,7 @@ export default function Home() {
         for (const line of lines) {
           if (!line.trim() || !line.startsWith('data:')) continue;
           const data = line.replace('data: ', '').trim();
-          if (data === '[DONE]') { refreshHistory(); continue; }
+          if (data === '[DONE]') { syncHistory(); continue; }
 
           try {
             const parsed = JSON.parse(data);
@@ -238,7 +235,7 @@ export default function Home() {
     }
   };
 
-  // ── Send image message ──────────────────────────────────────── ← NEW
+  // ── Send image ────────────────────────────────────────────
   const handleSendWithImage = async (formData: FormData) => {
     if (!user) { setIsAuthOpen(true); return; }
 
@@ -246,25 +243,15 @@ export default function Home() {
     const file         = formData.get('image') as File;
     const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const localPreview = URL.createObjectURL(file);
+    const userMsgId    = Date.now().toString();
 
-    // Show image + message in chat immediately
-    const userMsgId = Date.now().toString();
-    const userMsg   = {
-      id:        userMsgId,
-      role:      'user' as const,
-      content:   message || 'What is in this image?',
-      imageUrl:  localPreview,       // local blob preview
-      timestamp: timestampStr,
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setIsLoading(true);
     setMessages(prev => [
       ...prev,
-      { id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: timestampStr },
+      { id: userMsgId, role: 'user' as const, content: message || 'What is in this image?', imageUrl: localPreview, timestamp: timestampStr },
+      { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '', timestamp: timestampStr },
     ]);
+    setIsLoading(true);
 
-    // Add to sidebar on first message
     if (messages.length === 0) {
       setChatHistoryList(prev => {
         if (prev.some(c => c.id === sessionId)) return prev;
@@ -274,8 +261,6 @@ export default function Home() {
 
     try {
       const token = await user.getIdToken();
-
-      // Append sessionId and history to formData
       formData.append('sessionId', sessionId);
       formData.append('history', JSON.stringify(
         messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
@@ -283,7 +268,7 @@ export default function Home() {
 
       const res = await fetch('/api/vision', {
         method:  'POST',
-        headers: { Authorization: `Bearer ${token}` },  // NO Content-Type (FormData sets it)
+        headers: { Authorization: `Bearer ${token}` },
         body:    formData,
       });
 
@@ -306,20 +291,18 @@ export default function Home() {
         for (const line of lines) {
           if (!line.trim() || !line.startsWith('data:')) continue;
           const data = line.replace('data: ', '').trim();
-          if (data === '[DONE]') { refreshHistory(); continue; }
+          if (data === '[DONE]') { syncHistory(); continue; }
 
           try {
             const parsed = JSON.parse(data);
 
-            // First chunk → replace local blob with Cloudinary URL
             if (parsed.imageUrl && !cloudinaryUrl) {
               cloudinaryUrl = parsed.imageUrl;
-              setMessages(prev => prev.map(m =>
-                m.id === userMsgId ? { ...m, imageUrl: cloudinaryUrl } : m
-              ));
+              setMessages(prev =>
+                prev.map(m => m.id === userMsgId ? { ...m, imageUrl: cloudinaryUrl } : m)
+              );
             }
 
-            // Stream AI response
             if (parsed.content) {
               fullResponse += parsed.content;
               setMessages(prev => {
@@ -331,7 +314,7 @@ export default function Home() {
                 return updated;
               });
             }
-          } catch (e) { console.error('Vision stream parse error:', e); }
+          } catch (e) { console.error('Vision stream error:', e); }
         }
       }
     } catch (error: any) {
@@ -349,7 +332,101 @@ export default function Home() {
     }
   };
 
-  // ── Auth loading spinner ──────────────────────────────────────
+  // ── Send file (PDF/DOCX/TXT/CSV) ─────────────────────────  ← NEW
+  const handleSendFile = async (file: File) => {
+    if (!user) { setIsAuthOpen(true); return; }
+
+    const timestampStr  = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const uploadingMsgId = Date.now().toString();
+
+    // Show uploading state immediately
+    setMessages(prev => [
+      ...prev,
+      {
+        id:        uploadingMsgId,
+        role:      'user' as const,
+        content:   `Uploading ${file.name}...`,
+        timestamp: timestampStr,
+      },
+      {
+        id:        (Date.now() + 1).toString(),
+        role:      'assistant' as const,
+        content:   '⏳ Uploading your file, please wait...',
+        timestamp: timestampStr,
+      },
+    ]);
+
+    setIsLoading(true);
+
+    // Add to sidebar immediately
+    if (messages.length === 0) {
+      setChatHistoryList(prev => {
+        if (prev.some(c => c.id === sessionId)) return prev;
+        return [{ id: sessionId, title: `📎 ${file.name.slice(0, 35)}` }, ...prev];
+      });
+    }
+
+    try {
+      const token    = await user.getIdToken();
+      const formData = new FormData();
+      formData.append('file',      file);
+      formData.append('sessionId', sessionId);
+
+      const res  = await fetch('/api/upload', {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body:    formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+      // ── Replace uploading messages with real data ────────
+      setMessages(prev => {
+        const updated = [...prev];
+
+        // Replace user "uploading..." message with real file card
+        const userIdx = updated.findIndex(m => m.id === uploadingMsgId);
+        if (userIdx !== -1) {
+          updated[userIdx] = {
+            id:        uploadingMsgId,
+            role:      'user' as const,
+            content:   `Uploaded: ${data.fileName}`,
+            fileUrl:   data.url,
+            fileName:  data.fileName,
+            fileType:  data.fileType,
+            fileSize:  data.fileSize,
+            timestamp: timestampStr,
+          };
+        }
+
+        // Replace assistant "uploading..." with acknowledgment
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: `${data.icon} I've received **${data.fileName}** (${(data.fileSize / 1024).toFixed(1)} KB).\n\nThe file has been uploaded successfully! Once LangChain is set up, I'll be able to read and answer questions about its content. For now, feel free to ask me anything else!`,
+        };
+
+        return updated;
+      });
+
+      syncHistory();
+
+    } catch (err: any) {
+      console.error('File upload error:', err);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: `⚠️ Upload failed: ${err.message}. Please try again.`,
+        };
+        return updated;
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Auth loading spinner ──────────────────────────────────
   if (authLoading) {
     return (
       <main className="flex h-screen w-full items-center justify-center bg-background">
@@ -386,21 +463,22 @@ export default function Home() {
           <div className="mt-auto">
             <InputPanel
               onSend={handleSendMessage}
-              onSendImage={handleSendWithImage}   // ← NEW
+              onSendImage={handleSendWithImage}
+              onSendFile={handleSendFile}        // ← NEW
               isLoading={isLoading}
               onStop={handleStopGeneration}
-              sessionId={sessionId}               // ← NEW
-              history={messages}                  // ← NEW
+              sessionId={sessionId}
+              history={messages}
               openControls={() => setIsControlsOpen(true)}
             />
           </div>
         </div>
       </div>
 
-      <AdvancedControls    isOpen={isControlsOpen}   onClose={() => setIsControlsOpen(false)} />
-      <AnalyticsDashboard  isOpen={isAnalyticsOpen}  onClose={() => setIsAnalyticsOpen(false)} />
-      <SettingsModal       isOpen={isSettingsOpen}   onClose={() => setIsSettingsOpen(false)} />
-      <AuthModal           isOpen={isAuthOpen}       onClose={() => setIsAuthOpen(false)} />
+      <AdvancedControls   isOpen={isControlsOpen}  onClose={() => setIsControlsOpen(false)} />
+      <AnalyticsDashboard isOpen={isAnalyticsOpen} onClose={() => setIsAnalyticsOpen(false)} />
+      <SettingsModal      isOpen={isSettingsOpen}  onClose={() => setIsSettingsOpen(false)} />
+      <AuthModal          isOpen={isAuthOpen}      onClose={() => setIsAuthOpen(false)} />
     </main>
   );
 }
@@ -408,11 +486,13 @@ export default function Home() {
 
 // ---
 
-// ## Summary of Changes
+// ## What Changed
 // ```
-// ✅ Added handleSendWithImage function
-// ✅ Added refreshHistory helper (cleaner, reused in both send functions)
-// ✅ InputPanel gets 3 new props: onSendImage, sessionId, history
-// ✅ AbortError handled cleanly (no error message on manual stop)
-// ✅ Local blob preview → replaced with Cloudinary URL after upload
-// ✅ Image chats appear in sidebar history correctly
+// ✅ handleSendFile function added (NEW)
+// ✅ syncHistory helper replaces duplicate refreshHistory calls
+// ✅ onSendFile={handleSendFile} passed to InputPanel
+// ✅ File upload shows instant "uploading..." state in chat
+// ✅ On success → replaced with real file card + AI acknowledgment
+// ✅ On error → shows error message in chat
+// ✅ Sidebar updates after successful upload
+// ✅ Auth guard on file upload (opens login modal)
