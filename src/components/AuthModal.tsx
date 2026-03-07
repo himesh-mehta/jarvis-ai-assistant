@@ -40,7 +40,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             if (isLogin) {
                 await loginWithEmail(email, password);
             } else {
-                await registerWithEmail(email, password);
+                await registerWithEmail(email, password, name);
             }
             onClose();
         } catch (err: any) {

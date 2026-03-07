@@ -359,6 +359,7 @@ export default function Home() {
     onPinChat: handlePinChat,
     chats: [...chatHistoryList].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)),
     user: user,
+    currentMessages: messages,
   };
 
   return (

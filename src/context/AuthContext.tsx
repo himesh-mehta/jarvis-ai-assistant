@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  updateProfile,
   User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -15,7 +16,8 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (email: string, password: string) => Promise<void>;
+  registerWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
+  updateUserProfile: (displayName: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -41,8 +43,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const registerWithEmail = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
+  const registerWithEmail = async (email: string, password: string, displayName: string) => {
+    const res = await createUserWithEmailAndPassword(auth, email, password);
+    if (res.user) {
+      await updateProfile(res.user, { displayName });
+      // Reload user to get updated profile
+      await res.user.reload();
+      setUser(auth.currentUser);
+    }
+  };
+
+  const updateUserProfile = async (displayName: string) => {
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, { displayName });
+      await auth.currentUser.reload();
+      setUser(auth.currentUser);
+    }
   };
 
   const logout = async () => {
@@ -50,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithEmail, registerWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithEmail, registerWithEmail, updateUserProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

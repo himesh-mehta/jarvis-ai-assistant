@@ -60,6 +60,7 @@ interface SidebarProps {
     onMobileClose?: () => void;
     chats: { id: string | number; title: string; pinned?: boolean }[];
     user: FirebaseUser | null;
+    currentMessages?: any[];
 }
 
 interface VoiceMessage {
@@ -100,10 +101,21 @@ export const Sidebar = ({
     onPinChat,
     chats,
     user,
+    currentMessages = [],
     onMobileClose
 }: SidebarProps) => {
     const router = useRouter();
     const { logout } = useAuth();
+
+    const userPrompts = currentMessages.filter(m => m.role === "user");
+
+    const scrollToPrompt = (id: string) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
     const [activeTab, setActiveTab] = useState("Chats");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState("");
@@ -340,157 +352,212 @@ export const Sidebar = ({
                     </Button>
                 </div>
 
-                <ScrollArea className="flex-1 no-scrollbar">
-                    <div className="flex flex-col pt-12 pb-2 px-2 gap-0.5">
-                        {navItems.map((item) => (
-                            <React.Fragment key={item.id}>
-                                <Tooltip delayDuration={isCollapsed ? 0 : 500}>
-                                    <TooltipTrigger asChild>
-                                        <div
-                                            onClick={() => {
-                                                if (item.id === "voice") {
-                                                    setVoiceOpen(true);
-                                                    return;
-                                                }
-                                                if (item.id === "new") onNewChat();
-                                            }}
-                                            className={cn(
-                                                "flex items-center gap-3 px-2 py-2 rounded-xl cursor-pointer transition-all group text-white/40 hover:text-white hover:bg-white/5",
-                                                isCollapsed && "justify-center px-0"
-                                            )}
-                                        >
-                                            <div className="flex-shrink-0">{item.icon}</div>
-                                            {!isCollapsed && <span className="text-[13.5px] font-medium">{item.label}</span>}
+                <div className="flex flex-col pt-12 pb-2 px-2 gap-0.5 flex-shrink-0">
+                    {navItems.map((item) => (
+                        <React.Fragment key={item.id}>
+                            <Tooltip delayDuration={isCollapsed ? 0 : 500}>
+                                <TooltipTrigger asChild>
+                                    <div
+                                        onClick={() => {
+                                            if (item.id === "voice") {
+                                                setVoiceOpen(true);
+                                                return;
+                                            }
+                                            if (item.id === "new") onNewChat();
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-3 px-2 py-2 rounded-xl cursor-pointer transition-all group text-white/40 hover:text-white hover:bg-white/5",
+                                            isCollapsed && "justify-center px-0"
+                                        )}
+                                    >
+                                        <div className="flex-shrink-0">{item.icon}</div>
+                                        {!isCollapsed && <span className="text-[13.5px] font-medium">{item.label}</span>}
+                                    </div>
+                                </TooltipTrigger>
+                                {isCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                            </Tooltip>
+                        </React.Fragment>
+                    ))}
+
+                    {userPrompts.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <div className={cn(
+                                    "flex items-center gap-3 px-2 py-2 rounded-xl cursor-pointer transition-all group text-white/40 hover:text-white hover:bg-white/5 mt-0.5 outline-none",
+                                    isCollapsed && "justify-center px-0 flex-col"
+                                )}>
+                                    <div className={cn(
+                                        "flex flex-col gap-[1px] items-center justify-center w-[18px] h-[18px]",
+                                        isCollapsed ? "max-h-[60px] overflow-hidden" : ""
+                                    )}>
+                                        {userPrompts.map((p, i) => (
+                                            <div
+                                                key={p.id}
+                                                className="w-3.5 h-[1px] bg-white/40 group-hover:bg-white transition-colors"
+                                            />
+                                        ))}
+                                    </div>
+                                    {!isCollapsed && <span className="text-[13.5px] font-medium truncate">Activity ({userPrompts.length})</span>}
+                                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                side={window.innerWidth < 1024 ? "bottom" : "right"}
+                                sideOffset={window.innerWidth < 1024 ? 8 : 12}
+                                align={window.innerWidth < 1024 ? "center" : "start"}
+                                className="p-0 border-none bg-transparent shadow-none z-[100]"
+                            >
+                                <div className="w-[280px] sm:w-64 backdrop-blur-3xl bg-[linear-gradient(145deg,#07152f,#0b1f45)] border border-[rgba(0,170,255,0.25)] rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(0,170,255,0.15)] animate-in fade-in slide-in-from-top-2 lg:slide-in-from-left-2 duration-300">
+                                    <div className="p-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                                        <p className="text-[9px] font-bold text-neon-blue uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]">Conversation Timeline</p>
+                                        <span className="text-[9px] text-neon-blue font-bold px-1.5 py-0.5 bg-neon-blue/10 rounded-md border border-neon-blue/20">
+                                            {userPrompts.length} Prompts
+                                        </span>
+                                    </div>
+                                    <ScrollArea className="max-h-[300px]">
+                                        <div className="p-1.5 space-y-0.5">
+                                            {userPrompts.map((p, i) => (
+                                                <DropdownMenuItem
+                                                    key={p.id}
+                                                    onClick={() => {
+                                                        scrollToPrompt(p.id);
+                                                        onMobileClose?.();
+                                                    }}
+                                                    className="w-full text-left px-2.5 py-2 rounded-lg focus:bg-neon-blue/10 text-[12px] text-white/70 focus:text-white transition-all flex items-start gap-3 group/item border border-transparent outline-none cursor-pointer"
+                                                >
+                                                    <span className="text-[9px] font-mono text-neon-blue/40 mt-0.5 min-w-[12px]">{i + 1}</span>
+                                                    <span className="line-clamp-2 leading-tight">{p.content.trim()}</span>
+                                                </DropdownMenuItem>
+                                            ))}
                                         </div>
-                                    </TooltipTrigger>
-                                    {isCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-                                </Tooltip>
+                                    </ScrollArea>
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
 
-                            </React.Fragment>
-                        ))}
 
-
-                        {!isCollapsed && (
-                            <div className="mt-14 pl-0 pr-6 flex flex-col flex-1 min-h-0">
-                                <p className="text-[12px] font-bold text-white/40 uppercase tracking-[0.2em] mb-4 pl-3">Recents</p>
-                                <div className="space-y-0.5 pb-4">
-                                    {chats.map(chat => (
-                                        <div
-                                            key={chat.id}
-                                            className={cn(
-                                                "group flex items-center justify-between gap-2 text-[14px] text-white/50 hover:text-white cursor-pointer py-1.5 px-2 rounded-xl transition-all duration-300",
-                                                chat.pinned ? "bg-white/5 text-white" : "hover:bg-white/5"
-                                            )}
-                                        >
-                                            {editingId === chat.id.toString() ? (
-                                                <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
-                                                    <Input
-                                                        autoFocus
-                                                        value={editTitle}
-                                                        onChange={(e) => setEditTitle(e.target.value)}
-                                                        onBlur={() => {
-                                                            if (onRenameChat && editTitle.trim()) {
-                                                                onRenameChat(chat.id.toString(), editTitle);
-                                                            }
-                                                            setEditingId(null);
-                                                        }}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                if (onRenameChat && editTitle.trim()) {
-                                                                    onRenameChat(chat.id.toString(), editTitle);
-                                                                }
-                                                                setEditingId(null);
-                                                            }
-                                                        }}
-                                                        className="h-6 bg-white/10 border-white/20 text-[13px] py-0 px-2 flex-1"
-                                                    />
-                                                    <button className="text-neon-blue hover:text-white" onClick={() => {
+                {!isCollapsed && (
+                    <div className="mt-6 flex flex-col flex-1 min-h-0 overflow-hidden">
+                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-2 px-6">Recents</p>
+                        <ScrollArea className="flex-1">
+                            <div className="px-3 space-y-0.5 pb-6">
+                                {chats.map(chat => (
+                                    <div
+                                        key={chat.id}
+                                        className={cn(
+                                            "group flex items-center justify-between gap-2 text-[14px] text-white/50 hover:text-white cursor-pointer py-1.5 px-3 rounded-xl transition-all duration-300",
+                                            chat.pinned ? "bg-white/5 text-white" : "hover:bg-white/5"
+                                        )}
+                                    >
+                                        {editingId === chat.id.toString() ? (
+                                            <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
+                                                <Input
+                                                    autoFocus
+                                                    value={editTitle}
+                                                    onChange={(e) => setEditTitle(e.target.value)}
+                                                    onBlur={() => {
                                                         if (onRenameChat && editTitle.trim()) {
                                                             onRenameChat(chat.id.toString(), editTitle);
                                                         }
                                                         setEditingId(null);
-                                                    }}>
-                                                        <Check className="w-3.5 h-3.5" />
-                                                    </button>
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            if (onRenameChat && editTitle.trim()) {
+                                                                onRenameChat(chat.id.toString(), editTitle);
+                                                            }
+                                                            setEditingId(null);
+                                                        }
+                                                    }}
+                                                    className="h-6 bg-white/10 border-white/20 text-[13px] py-0 px-2 flex-1"
+                                                />
+                                                <button className="text-neon-blue hover:text-white" onClick={() => {
+                                                    if (onRenameChat && editTitle.trim()) {
+                                                        onRenameChat(chat.id.toString(), editTitle);
+                                                    }
+                                                    setEditingId(null);
+                                                }}>
+                                                    <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div
+                                                    onClick={() => onSelectChat(chat.id.toString(), chat.title)}
+                                                    className="flex-1 min-w-0 flex items-center gap-2"
+                                                >
+                                                    {chat.pinned && <Pin className="w-3 h-3 text-neon-blue rotate-45 fill-neon-blue shrink-0" />}
+                                                    <span className="truncate text-white/50 group-hover:text-white transition-colors">{chat.title}</span>
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <div
-                                                        onClick={() => onSelectChat(chat.id.toString(), chat.title)}
-                                                        className="flex-1 min-w-0 flex items-center gap-2"
-                                                    >
-                                                        {chat.pinned && <Pin className="w-3 h-3 text-neon-blue rotate-45 fill-neon-blue shrink-0" />}
-                                                        <span className="truncate text-white/50 group-hover:text-white transition-colors">{chat.title}</span>
-                                                    </div>
-                                                    <div className="flex shrink-0 items-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <button
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                    className="p-1 text-white/30 hover:text-white rounded-lg transition-colors"
-                                                                >
-                                                                    <MoreHorizontal className="w-4 h-4" />
-                                                                </button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-40 glass-dark border-white/10 text-white p-1">
+                                                <div className="flex shrink-0 items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="p-1 text-white/30 hover:text-white rounded-lg transition-colors"
+                                                            >
+                                                                <MoreHorizontal className="w-4 h-4" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-40 glass-dark border-white/10 text-white p-1">
+                                                            <DropdownMenuItem
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingId(chat.id.toString());
+                                                                    setEditTitle(chat.title);
+                                                                }}
+                                                                className="flex items-center gap-2 cursor-pointer focus:bg-white/10"
+                                                            >
+                                                                <Edit2 className="w-3.5 h-3.5 text-neon-blue" />
+                                                                <span>Rename</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (onPinChat) onPinChat(chat.id.toString());
+                                                                }}
+                                                                className="flex items-center gap-2 cursor-pointer focus:bg-white/10"
+                                                            >
+                                                                <Pin className={cn("w-3.5 h-3.5 text-purple-400", chat.pinned && "fill-purple-400")} />
+                                                                <span>{chat.pinned ? "Unpin Chat" : "Pin Chat"}</span>
+                                                            </DropdownMenuItem>
+                                                            {onDeleteChat && (
                                                                 <DropdownMenuItem
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setEditingId(chat.id.toString());
-                                                                        setEditTitle(chat.title);
+                                                                        onDeleteChat(chat.id.toString());
                                                                     }}
-                                                                    className="flex items-center gap-2 cursor-pointer focus:bg-white/10"
+                                                                    className="flex items-center gap-2 cursor-pointer focus:bg-red-500/20 text-red-400 focus:text-red-400"
                                                                 >
-                                                                    <Edit2 className="w-3.5 h-3.5 text-neon-blue" />
-                                                                    <span>Rename</span>
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                    <span>Delete</span>
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (onPinChat) onPinChat(chat.id.toString());
-                                                                    }}
-                                                                    className="flex items-center gap-2 cursor-pointer focus:bg-white/10"
-                                                                >
-                                                                    <Pin className={cn("w-3.5 h-3.5 text-purple-400", chat.pinned && "fill-purple-400")} />
-                                                                    <span>{chat.pinned ? "Unpin Chat" : "Pin Chat"}</span>
-                                                                </DropdownMenuItem>
-                                                                {onDeleteChat && (
-                                                                    <DropdownMenuItem
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            onDeleteChat(chat.id.toString());
-                                                                        }}
-                                                                        className="flex items-center gap-2 cursor-pointer focus:bg-red-500/20 text-red-400 focus:text-red-400"
-                                                                    >
-                                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                                        <span>Delete</span>
-                                                                    </DropdownMenuItem>
-                                                                )}
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                        )}
+                        </ScrollArea>
                     </div>
-                </ScrollArea>
+                )}
 
 
-                <div className="p-2 border-t border-white/5">
+                <div className="mt-auto p-2 border-t border-white/5">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <div className={cn("flex items-center justify-between p-2 rounded-xl hover:bg-white/5 cursor-pointer", isCollapsed && "justify-center px-0")}>
                                 <div className="flex items-center gap-3 truncate">
                                     <Avatar className="w-8 h-8 flex-shrink-0">
                                         <AvatarFallback className="bg-white/10 text-white text-xs">
-                                            {user?.email?.[0].toUpperCase() || "?"}
+                                            {(user?.displayName?.[0] || user?.email?.[0] || "?").toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
-                                    {!isCollapsed && <span className="text-sm font-bold text-white truncate">{user?.displayName || user?.email?.split('@')[0] || "User"}</span>}
+                                    {!isCollapsed && <span className="text-sm font-bold text-white truncate">{user?.displayName || "Anonymous"}</span>}
                                 </div>
                                 {!isCollapsed && <Settings className="w-4 h-4 text-white/20" />}
                             </div>
@@ -508,7 +575,7 @@ export const Sidebar = ({
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-            </motion.aside>
+            </motion.aside >
 
             <AnimatePresence>
                 {voiceOpen && (
