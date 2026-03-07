@@ -66,14 +66,6 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
 
     const [thinkingMsg, setThinkingMsg] = useState(THINKING_MESSAGES[0]);
 
-    const SUGGESTIONS = [
-        { icon: "⚡", text: "What can you help me with?" },
-        { icon: "🧠", text: "Explain something complex simply" },
-        { icon: "💻", text: "Help me debug my code" },
-        { icon: "🚀", text: "What are the latest AI trends?" },
-        { icon: "📄", text: "Analyze a document for me" },
-        { icon: "🎯", text: "Help me plan my project" },
-    ];
 
     useEffect(() => {
         if (!isThinking) {
@@ -116,7 +108,6 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
     return (
         <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden relative">
             <ScrollArea
-                id="main-chat-scroll-area"
                 className="flex-1 px-4 lg:px-8 py-6 no-scrollbar"
                 onScroll={handleScroll}
             >
@@ -130,38 +121,54 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                             transition={{ duration: 0.8 }}
                             className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4"
                         >
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-600/10 flex items-center justify-center border border-white/5 mb-8 group hover:border-blue-500/30 transition-all duration-500">
-                                <Sparkles className="w-8 h-8 text-blue-400 group-hover:scale-110 transition-transform" />
-                            </div>
-                            <h1 className="text-4xl sm:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-purple drop-shadow-[0_0_30px_rgba(0,210,255,0.3)] mb-3">
+
+                            <h1 className="text-5xl sm:text-8xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white/80 to-white/20 select-none drop-shadow-[0_0_40px_rgba(0,210,255,0.2)]">
                                 JARVIS
                             </h1>
 
-                            {onSuggestionClick && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-8 w-full max-w-lg">
-                                    {SUGGESTIONS.map((s, i) => (
-                                        <motion.button
-                                            key={i}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: i * 0.1 }}
-                                            onClick={() => onSuggestionClick(s.text)}
-                                            className="flex items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-neon-blue/30 transition-all text-left text-sm text-white/50 hover:text-white group"
-                                        >
-                                            <span className="text-lg group-hover:scale-110 transition-transform">
-                                                {s.icon}
-                                            </span>
-                                            <span className="text-xs leading-snug">{s.text}</span>
-                                        </motion.button>
-                                    ))}
-                                </div>
-                            )}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 0.8 }}
+                                className="mt-4 relative group"
+                            >
+                                <h2 className="text-[15px] sm:text-4xl font-light tracking-tight text-white/60 flex flex-row items-center justify-center gap-1.5 sm:gap-3 whitespace-nowrap mb-2">
+                                    <span>What are you</span>
+                                    <span className="relative inline-block text-white font-medium italic">
+                                        curious
+                                        <motion.div
+                                            className="absolute -bottom-1 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon-blue to-transparent"
+                                            initial={{ scaleX: 0, opacity: 0 }}
+                                            animate={{ scaleX: 1, opacity: 1 }}
+                                            transition={{ delay: 1.2, duration: 1 }}
+                                        />
+                                        <motion.div
+                                            className="absolute -inset-1 bg-neon-blue/10 blur-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                                        />
+                                    </span>
+                                    <span>about today?</span>
+                                </h2>
+
+                                {/* Subtle animated particles or glow under slogan */}
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-24 -z-10 bg-[radial-gradient(circle,rgba(0,210,255,0.05)_0%,transparent_70%)] rounded-full blur-2xl" />
+
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: [0.2, 0.4, 0.2] }}
+                                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                    className="mt-6 flex items-center justify-center gap-2 text-white/20"
+                                >
+                                    <div className="w-12 h-[1px] bg-gradient-to-r from-transparent to-white/10" />
+                                    <Bot className="w-4 h-4" />
+                                    <div className="w-12 h-[1px] bg-gradient-to-l from-transparent to-white/10" />
+                                </motion.div>
+                            </motion.div>
                         </motion.div>
                     ) : (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="pt-2 pb-12 flex items-center justify-center"
+                            className="pt-2 pb-12 hidden sm:flex items-center justify-center"
                         >
                             <div className="px-3 py-1 rounded-full border border-white/80 bg-white/5 backdrop-blur-sm">
                                 <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em]">
@@ -255,11 +262,12 @@ const MessageItem = ({ message }: { message: Message }) => {
 
     return (
         <motion.div
+            id={message.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className={cn("flex gap-2 sm:gap-3 group", isUser ? "flex-row-reverse" : "flex-row")}
+            className={cn("flex gap-2 sm:gap-3 group scroll-mt-20", isUser ? "flex-row-reverse" : "flex-row")}
         >
             {/* ── Avatar ── */}
             <Avatar className={cn(

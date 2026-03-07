@@ -27,6 +27,15 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+    const { user, updateUserProfile } = useAuth();
+    const [username, setUsername] = React.useState("");
+
+    React.useEffect(() => {
+        if (user?.displayName) {
+            setUsername(user.displayName);
+        }
+    }, [user]);
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -67,11 +76,32 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                                         <div className="space-y-4">
                                             <div className="flex flex-col gap-2">
                                                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Public Name</label>
-                                                <Input placeholder="himesh" className="bg-white/5 border-white/10" />
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        value={username}
+                                                        onChange={(e) => setUsername(e.target.value)}
+                                                        placeholder="Enter your name"
+                                                        className="bg-white/5 border-white/10"
+                                                    />
+                                                    <Button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await updateUserProfile(username);
+                                                                alert("Username updated!");
+                                                            } catch (err) {
+                                                                alert("Failed to update username.");
+                                                            }
+                                                        }}
+                                                        disabled={!username || username === user?.displayName}
+                                                        className="bg-neon-blue text-black hover:bg-neon-blue/80 font-bold px-4"
+                                                    >
+                                                        Save
+                                                    </Button>
+                                                </div>
                                             </div>
                                             <div className="flex flex-col gap-2">
                                                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Email Address</label>
-                                                <Input placeholder="himesh@example.com" disabled className="bg-white/5 border-white/10 opacity-50" />
+                                                <Input value={user?.email || ""} disabled className="bg-white/5 border-white/10 opacity-50" />
                                             </div>
                                         </div>
                                         <Separator className="bg-white/10" />
