@@ -40,12 +40,28 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             if (isLogin) {
                 await loginWithEmail(email, password);
             } else {
+                if (password.length < 6) {
+                    throw new Error("Password must be at least 6 characters long.");
+                }
                 await registerWithEmail(email, password, name);
             }
             onClose();
         } catch (err: any) {
             console.error("Auth Error:", err);
-            setError(err.message || "Something went wrong. Please check your details.");
+            let userMsg = "Something went wrong. Please check your details.";
+
+            // Map common Firebase auth errors to simple, friendly messages
+            if (err.code === 'auth/invalid-credential') {
+                userMsg = "Invalid email or password. Please try again or sign up.";
+            } else if (err.code === 'auth/email-already-in-use') {
+                userMsg = "This email is already registered. Please login instead.";
+            } else if (err.code === 'auth/weak-password') {
+                userMsg = "Password must be at least 6 characters (Firebase restriction).";
+            } else if (err.message) {
+                userMsg = err.message;
+            }
+
+            setError(userMsg);
         } finally {
             setIsLoadingLocal(false);
         }
@@ -167,7 +183,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                                         <Input
                                             type="password"
-                                            placeholder="••••"
+                                            placeholder="Min. 6 chars"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
