@@ -58,7 +58,12 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             await loginWithGoogle();
             onClose();
         } catch (err: any) {
-            setError(err.message || "Google login failed.");
+            console.error("Google Login Error:", err);
+            if (err.code === 'auth/unauthorized-domain') {
+                setError("Domain not authorized. Add your URL to Firebase Console > Authentication > Settings > Authorized Domains.");
+            } else {
+                setError(err.message || "Google login failed.");
+            }
         } finally {
             setIsLoadingLocal(false);
         }
@@ -162,7 +167,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                                         <Input
                                             type="password"
-                                            placeholder="••••••••"
+                                            placeholder="••••"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
