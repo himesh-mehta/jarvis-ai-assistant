@@ -45,6 +45,8 @@ export const InputPanel = ({
     history,
     isVoiceRecording = false,
     interimTranscript = "",
+    input = "",
+    onInputChange,
 }: {
     openControls: () => void;
     onSend: (content: string) => void;
@@ -57,8 +59,9 @@ export const InputPanel = ({
     history?: any[];
     isVoiceRecording?: boolean;
     interimTranscript?: string;
+    input?: string;
+    onInputChange?: (val: string) => void;
 }) => {
-    const [input, setInput] = useState("");
 
     // ── Image states ──────────────────────────────────────
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -79,12 +82,7 @@ export const InputPanel = ({
 
         // 2. Global keydown listener
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            // New Shortcut: Ctrl+M for Voice Chat
-            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-                e.preventDefault();
-                onVoiceChat?.();
-                return;
-            }
+
 
             // Ignore if user is already typing in an input, textarea or content-editable
             const activeElement = document.activeElement;
@@ -183,7 +181,7 @@ export const InputPanel = ({
         if (selectedFile && onSendFile) {
             onSendFile(selectedFile);
             setSelectedFile(null);
-            setInput('');
+            onInputChange?.('');
             return;
         }
 
@@ -199,14 +197,14 @@ export const InputPanel = ({
             onSendImage(formData);
             setSelectedImage(null);
             setImagePreview(null);
-            setInput('');
+            onInputChange?.('');
             return;
         }
 
         // 3️⃣ Normal text
         if (!input.trim()) return;
         onSend(input);
-        setInput("");
+        onInputChange?.("");
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -331,7 +329,7 @@ export const InputPanel = ({
                         <Textarea
                             ref={textareaRef}
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={(e) => onInputChange?.(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={
                                 isVoiceRecording
@@ -464,21 +462,3 @@ const InputIconButton = ({ icon, label, onClick }: {
         </TooltipContent>
     </Tooltip>
 );
-// ```
-
-// ---
-
-// ## Summary of Changes vs Your Version
-// ```
-// ✅ Added onSendFile prop
-// ✅ Added selectedFile state
-// ✅ Added fileDocRef (separate hidden input for docs)
-// ✅ Added handleFileSelect with validation
-// ✅ Added removeFile handler
-// ✅ File preview card shows above image preview
-// ✅ "Add File" dropdown item wired to fileDocRef
-// ✅ handleSend: file → image → text priority order
-// ✅ canSend includes selectedFile
-// ✅ Paperclip turns blue for both image AND file
-// ✅ Placeholder changes for file selected state
-// ✅ Picking image clears file and vice versa

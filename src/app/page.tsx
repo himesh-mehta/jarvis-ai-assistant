@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Menu, PanelLeft, Plus } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
@@ -27,9 +27,15 @@ export default function Home() {
   const { user, loading: authLoading } = useAuth();
 
   const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState('');
   const [chatHistoryList, setChatHistoryList] = useState<{ id: string; title: string; pinned?: boolean }[]>([]);
+
+  const userPrompts = useMemo(() =>
+    messages.filter(m => m.role === 'user'),
+    [messages]);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // ── Voice State ──────────────────────────────────────────
@@ -63,19 +69,21 @@ export default function Home() {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
+          if (!isVoiceOpen) {
+            // Dictation mode: append to input
+            setInput(prev => prev + (prev.endsWith(" ") || !prev ? "" : " ") + transcript.trim());
+          } else {
+            finalTranscript += transcript + " ";
+          }
         } else {
           interim += transcript;
         }
       }
       setInterimTranscript(interim);
-      if (finalTranscript.trim() && !isVoiceRecording) {
-        // This is handled on stop usually, but let's keep it clean
-      }
     };
 
     recognition.onend = () => {
-      if (finalTranscript.trim()) {
+      if (isVoiceOpen && finalTranscript.trim()) {
         handleSendMessage(finalTranscript.trim());
       }
       setIsVoiceRecording(false);
@@ -134,6 +142,7 @@ export default function Home() {
             id: s.sessionId,
             title: s.title || 'New Chat',
             pinned: s.pinned || false,
+            updatedAt: s.updatedAt
           }))
         );
       }
@@ -222,17 +231,7 @@ export default function Home() {
         return;
       }
 
-      // (2) Previous Chat (Ctrl+H)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-        e.preventDefault();
-        if (chatHistoryList.length > 0) {
-          const currentIndex = chatHistoryList.findIndex(c => c.id === sessionId);
-          const nextIndex = (currentIndex + 1) % chatHistoryList.length;
-          const nextChat = chatHistoryList[nextIndex];
-          handleSelectChat(nextChat.id, nextChat.title);
-        }
-        return;
-      }
+
 
       // (3) Toggle Sidebar (Ctrl+S)
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -287,7 +286,10 @@ export default function Home() {
     if (messages.length === 0) {
       setChatHistoryList(prev => {
         if (prev.some(c => c.id === sessionId)) return prev;
-        return [{ id: sessionId, title: content.slice(0, 40) + (content.length > 40 ? '...' : '') }, ...prev];
+        const cleanTitle = content.replace(/\[.*?\]\s*/g, '').trim();
+        const words = cleanTitle.split(/\s+/);
+        const title = words.length > 3 ? words.slice(0, 3).join(' ') + '...' : (cleanTitle.slice(0, 20) + (cleanTitle.length > 20 ? '...' : '') || 'New Chat');
+        return [{ id: sessionId, title }, ...prev];
       });
     }
 
@@ -362,7 +364,16 @@ export default function Home() {
       { id: userMsgId, role: 'user' as const, content: message || 'What is in this image?', imageUrl: localPreview, timestamp: timestampStr },
       { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '', timestamp: timestampStr },
     ]);
-    setIsLoading(true);
+    if (messages.length === 0) {
+      setChatHistoryList(prev => {
+        if (prev.some(c => c.id === sessionId)) return prev;
+        const baseContent = message || 'Image Analysis';
+        const cleanTitle = baseContent.replace(/\[.*?\]\s*/g, '').trim();
+        const words = cleanTitle.split(/\s+/);
+        const title = words.length > 3 ? words.slice(0, 3).join(' ') + '...' : (cleanTitle.slice(0, 20) + (cleanTitle.length > 20 ? '...' : ''));
+        return [{ id: sessionId, title }, ...prev];
+      });
+    }
 
     try {
       const token = await user.getIdToken();
@@ -422,6 +433,13 @@ export default function Home() {
       { id: uploadingMsgId, role: 'user' as const, content: `Uploading ${file.name}...`, timestamp: timestampStr },
       { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '⏳ Uploading...', timestamp: timestampStr },
     ]);
+    if (messages.length === 0) {
+      setChatHistoryList(prev => {
+        if (prev.some(c => c.id === sessionId)) return prev;
+        return [{ id: sessionId, title: `File: ${file.name}` }, ...prev];
+      });
+    }
+
     setIsLoading(true);
     try {
       const token = await user.getIdToken();
@@ -459,6 +477,8 @@ export default function Home() {
     );
   }
 
+
+
   const sidebarProps = {
     isCollapsed: isSidebarCollapsed,
     setIsCollapsed: setIsSidebarCollapsed,
@@ -477,7 +497,9 @@ export default function Home() {
     onPinChat: handlePinChat,
     chats: [...chatHistoryList].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)),
     user: user,
-    currentMessages: messages,
+    userPrompts: userPrompts,
+    currentChatId: sessionId,
+    onSyncHistory: syncHistory,
   };
 
   return (
@@ -535,12 +557,13 @@ export default function Home() {
           <ChatInterface messages={messages} isThinking={isLoading} onSuggestionClick={(text) => handleSendMessage(text)} />
           <div className="mt-auto">
             <InputPanel
+              input={input}
+              onInputChange={setInput}
               onSend={handleSendMessage}
               onSendImage={handleSendWithImage}
               onSendFile={handleSendFile}
               isLoading={isLoading}
               onVoiceChat={() => {
-                setIsVoiceOpen(true);
                 setIsVoiceRecording(!isVoiceRecording);
               }}
               onStop={handleStopGeneration}

@@ -179,10 +179,19 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                     )}
 
                     {/* ── Messages ── */}
-                    <AnimatePresence initial={false}>
-                        {messages.map((message) => (
-                            <MessageItem key={message.id} message={message} />
-                        ))}
+                    <AnimatePresence initial={false} mode="wait">
+                        <motion.div
+                            key={messages[0]?.id || "empty"}
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                visible: { transition: { staggerChildren: 0.1 } }
+                            }}
+                        >
+                            {messages.map((message) => (
+                                <MessageItem key={message.id} message={message} />
+                            ))}
+                        </motion.div>
                     </AnimatePresence>
 
                     {/* ── Thinking Indicator ── */}
@@ -263,11 +272,13 @@ const MessageItem = ({ message }: { message: Message }) => {
     return (
         <motion.div
             id={message.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0 }
+            }}
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className={cn("flex gap-2 sm:gap-3 group scroll-mt-20", isUser ? "flex-row-reverse" : "flex-row")}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className={cn("flex gap-2 sm:gap-3 group scroll-mt-20 my-6", isUser ? "flex-row-reverse" : "flex-row")}
         >
             {/* ── Avatar ── */}
             <Avatar className={cn(

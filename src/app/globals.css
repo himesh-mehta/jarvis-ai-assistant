@@ -51,6 +51,14 @@
   --color-deep-space: #020617;
   --color-glass: rgba(255, 255, 255, 0.03);
   --color-glass-border: rgba(255, 255, 255, 0.1);
+
+  --color-jarvis-bg: #020617;
+  --color-jarvis-card: rgba(15, 23, 42, 0.8);
+  --color-jarvis-neon: #00e5ff;
+  --color-jarvis-secondary: #38bdf8;
+  --color-jarvis-text: #e2e8f0;
+  --color-jarvis-muted: #64748b;
+  --color-jarvis-glow: rgba(0, 229, 255, 0.4);
 }
 
 :root {
@@ -178,6 +186,90 @@
   .glow-blue {
     box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
   }
+
+  .jarvis-grid {
+    background-image:
+      linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .jarvis-card-item {
+    @apply bg-jarvis-card backdrop-blur-md border border-jarvis-neon/10 rounded-xl transition-all duration-300;
+    will-change: transform, opacity;
+  }
+
+  .jarvis-card-item:hover {
+    @apply border-jarvis-neon/40 -translate-y-1 scale-[1.01] bg-jarvis-card/90;
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.08);
+  }
+
+  .jarvis-title-glow {
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+  }
+
+  .jarvis-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-jarvis-neon) transparent;
+    scroll-behavior: smooth;
+  }
+
+  .jarvis-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .jarvis-scrollbar::-webkit-scrollbar-track {
+    background: rgba(2, 6, 23, 0.5);
+  }
+
+  .jarvis-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 229, 255, 0.4);
+    @apply rounded-full transition-colors;
+  }
+
+  .jarvis-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 229, 255, 0.7);
+  }
+
+  .jarvis-neon-btn {
+    @apply bg-jarvis-neon/5 border border-jarvis-neon/20 text-jarvis-neon/90 transition-all duration-300;
+    box-shadow: 0 0 5px rgba(0, 229, 255, 0.05);
+  }
+
+  .jarvis-neon-btn:hover {
+    @apply bg-jarvis-neon/20 border-jarvis-neon/60 scale-105;
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+  }
+
+  .animate-jarvis-line {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-jarvis-line::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--color-jarvis-neon), transparent);
+    animation: jarvis-line 8s linear infinite;
+  }
+
+  @keyframes jarvis-line {
+    0% {
+      left: -100%;
+    }
+
+    50% {
+      left: 100%;
+    }
+
+    100% {
+      left: 100%;
+    }
+  }
 }
 
 @keyframes gradient {
@@ -206,8 +298,86 @@
   }
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+@layer utilities {
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* ─── Neural Voice Mode Animations ─── */
+  @keyframes runner-run {
+    0% {
+      transform: translateY(0) rotate(0deg);
+    }
+
+    25% {
+      transform: translateY(-4px) rotate(-5deg);
+    }
+
+    50% {
+      transform: translateY(0) rotate(0deg);
+    }
+
+    75% {
+      transform: translateY(-4px) rotate(5deg);
+    }
+
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+  }
+
+  @keyframes neuro-stream {
+    0% {
+      background-position: 0% 0%;
+    }
+
+    100% {
+      background-position: 100% 0%;
+    }
+  }
+
+  @keyframes data-flow {
+    0% {
+      transform: translateX(-100%) skewX(-45deg);
+      opacity: 0;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+
+    100% {
+      transform: translateX(200%) skewX(-45deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes scan-line {
+    0% {
+      top: -100%;
+    }
+
+    100% {
+      top: 100%;
+    }
+  }
+
+  .animate-runner {
+    animation: runner-run 0.4s infinite linear;
+  }
+
+  .animate-data-stream {
+    animation: neuro-stream 2s infinite linear;
+  }
+
+  .animate-flow-particle {
+    animation: data-flow var(--duration, 2s) infinite linear;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .animate-scan {
+    animation: scan-line 4s linear infinite;
+  }
 }
 
 /* Custom Scrollbar */
