@@ -70,7 +70,7 @@ export default function Home() {
       }
       setInterimTranscript(interim);
       if (finalTranscript.trim() && !isVoiceRecording) {
-         // This is handled on stop usually, but let's keep it clean
+        // This is handled on stop usually, but let's keep it clean
       }
     };
 
@@ -246,7 +246,7 @@ export default function Home() {
         const scrollArea = document.querySelector('#main-chat-scroll-area [data-radix-scroll-area-viewport]');
         if (scrollArea) {
           e.preventDefault();
-          
+
           if (e.repeat) {
             // Sustained press: Continuous, high-speed fluid scroll (behavior 'auto')
             // Using smaller step but NO throttle results in native-like rapid glide
@@ -462,8 +462,14 @@ export default function Home() {
   const sidebarProps = {
     isCollapsed: isSidebarCollapsed,
     setIsCollapsed: setIsSidebarCollapsed,
-    openSettings: () => setIsSettingsOpen(true),
-    openAuth: () => setIsAuthOpen(true),
+    openSettings: () => {
+      setIsSettingsOpen(true);
+      setIsMobileMenuOpen(false);
+    },
+    openAuth: () => {
+      setIsAuthOpen(true);
+      setIsMobileMenuOpen(false);
+    },
     onNewChat: handleNewChat,
     onSelectChat: handleSelectChat,
     onDeleteChat: handleDeleteChat,
@@ -475,7 +481,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex h-screen w-full overflow-hidden bg-background text-foreground relative">
+    <main className="flex h-[100dvh] w-full overflow-hidden bg-background text-foreground relative">
       <ParticleBackground />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.5),rgba(2,6,23,1))] pointer-events-none z-0" />
 

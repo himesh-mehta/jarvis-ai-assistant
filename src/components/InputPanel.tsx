@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Mic, Paperclip, ArrowUp,
+    Mic, Paperclip, ArrowUp, Plus,
     MicOff, Image as ImageIcon, FileUp, Square, X
 } from "lucide-react";
 import {
@@ -223,13 +223,13 @@ export const InputPanel = ({
     };
 
     // ── canSend logic ─────────────────────────────────────
-    const canSend = !isLoading && (!!input.trim() || !!selectedImage || !!selectedFile);
+    const canSend = !isLoading && (input.length > 0 || !!selectedImage || !!selectedFile);
 
     // ── Paperclip highlight ───────────────────────────────
     const hasAttachment = !!selectedImage || !!selectedFile;
 
     return (
-        <div className="pb-2 px-2 sm:pb-4 sm:px-4 lg:px-6 bg-transparent">
+        <div className="pb-8 px-2 sm:pb-4 sm:px-4 lg:px-6 bg-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)]">
 
             {/* ── Hidden: image input ── */}
             <input
@@ -364,7 +364,7 @@ export const InputPanel = ({
                                         <div>
                                             <InputIconButton
                                                 icon={
-                                                    <Paperclip className={cn(
+                                                    <Plus className={cn(
                                                         "w-4 h-4 transition-colors",
                                                         hasAttachment && "text-neon-blue"
                                                     )} />

@@ -330,7 +330,7 @@ export const Sidebar = ({
             <motion.aside
                 initial={false}
                 animate={{ width: isCollapsed ? 52 : 260 }}
-                className="flex h-screen flex-col bg-[#020617]/90 backdrop-blur-2xl relative z-50 overflow-hidden border-r border-white/10"
+                className="flex h-[100dvh] flex-col bg-[#020617]/90 backdrop-blur-2xl relative z-50 overflow-hidden border-r border-white/10"
             >
                 <div className="h-14 flex items-center justify-between px-3 flex-shrink-0">
                     {!isCollapsed && (

@@ -7,6 +7,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   updateProfile,
+  signInWithRedirect,
+  getRedirectResult,
   User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -32,11 +34,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       setLoading(false);
     });
+
+    // Check for redirect result on mount
+    getRedirectResult(auth).catch(err => {
+      console.error("Redirect login error:", err);
+    });
+
     return () => unsub();
   }, []);
 
   const loginWithGoogle = async () => {
-    await signInWithPopup(auth, googleProvider);
+    // Better mobile support for Google login
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      await signInWithRedirect(auth, googleProvider);
+    } else {
+      await signInWithPopup(auth, googleProvider);
+    }
   };
 
   const loginWithEmail = async (email: string, password: string) => {

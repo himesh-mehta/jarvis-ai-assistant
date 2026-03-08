@@ -67,7 +67,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 overflow-y-auto min-h-screen">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -82,7 +82,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                         exit={{ scale: 0.95, opacity: 0 }}
                         role="dialog"
                         aria-modal="true"
-                        className="relative w-full max-w-[400px] bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl z-10"
+                        className="relative w-full max-w-[400px] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl z-10 my-auto"
                     >
                         <button
                             onClick={onClose}
@@ -93,11 +93,9 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
                         <div className="p-8">
                             <div className="text-center mb-8">
-                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 mb-4">
-                                    <Sparkles className="w-6 h-6 text-white" />
-                                </div>
+
                                 <h2 className="text-2xl font-bold text-white mb-2">
-                                    {isLogin ? "Sign In" : "Create Account"}
+                                    {isLogin ? "Login" : "Create Account"}
                                 </h2>
                                 <p className="text-zinc-500 text-sm">
                                     {isLogin ? "Welcome back to JARVIS" : "Get started with your AI assistant"}
@@ -137,7 +135,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                                 value={name}
                                                 onChange={(e) => setName(e.target.value)}
                                                 required={!isLogin}
-                                                className="pl-10 bg-zinc-900 border-zinc-800 focus:border-white/20 h-11 rounded-xl text-sm transition-all"
+                                                className="pl-10 bg-zinc-900 border-zinc-800 focus:border-white/20 h-11 rounded-xl text-base transition-all shadow-none outline-none focus:ring-0"
                                             />
                                         </div>
                                     </div>
@@ -153,7 +151,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             required
-                                            className="pl-10 bg-zinc-900 border-zinc-800 focus:border-white/20 h-11 rounded-xl text-sm transition-all"
+                                            className="pl-10 bg-zinc-900 border-zinc-800 focus:border-white/20 h-11 rounded-xl text-base transition-all shadow-none outline-none focus:ring-0"
                                         />
                                     </div>
                                 </div>
@@ -168,7 +166,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
-                                            className="pl-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 h-11 rounded-xl text-sm transition-all"
+                                            className="pl-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 h-11 rounded-xl text-base transition-all shadow-none outline-none focus:ring-0"
                                         />
                                     </div>
                                 </div>
@@ -184,7 +182,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                         </div>
                                     ) : (
                                         <div className="flex items-center justify-center gap-2">
-                                            {isLogin ? "Sign In" : "Sign Up"}
+                                            {isLogin ? "Login" : "Sign Up"}
                                             <ArrowRight className="w-4 h-4" />
                                         </div>
                                     )}
@@ -239,7 +237,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                     }}
                                     className="text-white hover:underline transition-all font-medium"
                                 >
-                                    {isLogin ? "Sign up" : "Sign in"}
+                                    {isLogin ? "Sign up" : "Login"}
                                 </button>
                             </div>
                         </div>

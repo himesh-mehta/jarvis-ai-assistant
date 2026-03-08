@@ -1,5 +1,5 @@
 import "@/lib/serverPolyfills";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +18,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "JARVIS AI | Advanced Intelligence",
   description: "The next generation of AI assistance. Powerful, intelligent, and autonomous.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
