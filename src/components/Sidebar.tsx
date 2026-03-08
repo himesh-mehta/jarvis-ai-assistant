@@ -719,13 +719,13 @@ export const Sidebar = React.memo(({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                        className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/80 backdrop-blur-md"
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="w-[550px] h-[750px] bg-[#020617] border-2 border-blue-500/20 rounded-[40px] flex flex-col relative overflow-hidden shadow-[0_0_100px_rgba(59,130,246,0.15)]"
+                            className="w-full h-full sm:w-[500px] sm:h-[85vh] sm:max-h-[750px] bg-[#020617] sm:border border-blue-500/20 sm:rounded-[40px] flex flex-col relative overflow-hidden shadow-[0_0_100px_rgba(59,130,246,0.15)]"
                         >
                             {/* Neural Background */}
                             <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -764,7 +764,7 @@ export const Sidebar = React.memo(({
                             </div>
 
                             {/* Runner Visualization Area */}
-                            <div className="h-32 relative overflow-hidden bg-gradient-to-b from-blue-500/15 via-transparent to-transparent border-b border-white/5">
+                            <div className="h-40 sm:h-32 relative overflow-hidden bg-gradient-to-b from-blue-500/15 via-transparent to-transparent border-b border-white/5 shrink-0">
                                 {/* Neural Horizon Grid */}
                                 <div className="absolute inset-0 [perspective:800px] opacity-10">
                                     <div
@@ -889,7 +889,7 @@ export const Sidebar = React.memo(({
                             </ScrollArea>
 
                             {/* Interaction Area */}
-                            <div className="p-3 border-t border-white/5 bg-white/[0.01] flex flex-col items-center gap-3 relative">
+                            <div className="p-6 sm:p-3 pb-10 sm:pb-3 border-t border-white/5 bg-white/[0.01] flex flex-col items-center gap-3 relative shrink-0">
                                 <div className="absolute inset-0 bg-blue-500/[0.02] pointer-events-none" />
 
                                 <div className="flex items-center gap-8 relative z-10 w-full justify-center">
