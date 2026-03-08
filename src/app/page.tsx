@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Menu, PanelLeft, Plus } from "lucide-react";
+import { Menu, PanelLeft, Plus, Smartphone } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
 import { InputPanel } from "@/components/InputPanel";
+import { AndroidControl } from '@/components/AndroidControl';
+import { parseCommand } from '@/app/lib/commandParser';
 import dynamic from "next/dynamic";
 const ParticleBackground = dynamic(() => import("@/components/ParticleBackground"), { ssr: false });
 const AdvancedControls = dynamic(() => import("@/components/AdvancedControls").then(m => m.AdvancedControls), { ssr: false });
@@ -23,6 +25,7 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAndroidOpen, setIsAndroidOpen] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
 
@@ -268,6 +271,47 @@ export default function Home() {
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
     if (!user) { setIsAuthOpen(true); return; }
+
+    // (A) Phone Command Detection
+    const parsed = parseCommand(content);
+    if (parsed.isCommand && parsed.command !== 'agent_task') {
+      const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setMessages(prev => [
+        ...prev,
+        { id: Date.now().toString(), role: 'user' as const, content, timestamp: timestampStr },
+        { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '⚡ Executing on your phone...', timestamp: timestampStr },
+      ]);
+      setIsLoading(true);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/android', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ command: parsed.command, params: parsed.params }),
+        });
+        const data = await res.json();
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: data.success ? `✅ ${data.result}` : `❌ ${data.error}`,
+          };
+          return updated;
+        });
+      } catch {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: '❌ Android bridge offline. Run: node android-bridge/server.js',
+          };
+          return updated;
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg = { id: Date.now().toString(), role: 'user' as const, content, timestamp: timestampStr };
@@ -543,14 +587,33 @@ export default function Home() {
           <span className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-purple">
             JARVIS
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleNewChat}
-            className="text-white/40 hover:text-white"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAndroidOpen(true)}
+              className="p-2 text-white/40 hover:text-white"
+            >
+              <Smartphone className="w-5 h-5" />
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNewChat}
+              className="text-white/40 hover:text-white"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Desktop Header ── */}
+        <div className="hidden lg:flex items-center justify-end px-6 h-14 border-b border-white/5 bg-background/20 backdrop-blur-sm">
+          <button
+            onClick={() => setIsAndroidOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs text-white/60 hover:text-white mr-4"
           >
-            <Plus className="w-5 h-5" />
-          </Button>
+            <Smartphone className="w-4 h-4" />
+            Android
+          </button>
         </div>
 
         <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -598,6 +661,11 @@ export default function Home() {
         }))}
         onToggleRecording={() => setIsVoiceRecording(!isVoiceRecording)}
         interimTranscript={interimTranscript}
+      />
+
+      <AndroidControl
+        isOpen={isAndroidOpen}
+        onClose={() => setIsAndroidOpen(false)}
       />
     </main>
   );
