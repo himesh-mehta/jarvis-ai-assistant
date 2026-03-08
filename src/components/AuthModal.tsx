@@ -3,13 +3,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Mail,
-    Lock,
-    User,
-    ArrowRight,
-    AlertCircle,
-    X,
-    Sparkles
+    Mail, Lock, User, ArrowRight,
+    AlertCircle, X, Sparkles, Eye, EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +21,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false); // ✅ Show/hide password
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [isLoadingLocal, setIsLoadingLocal] = useState(false);
@@ -49,18 +45,15 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         } catch (err: any) {
             console.error("Auth Error:", err);
             let userMsg = "Something went wrong. Please check your details.";
-
-            // Map common Firebase auth errors to simple, friendly messages
             if (err.code === 'auth/invalid-credential') {
                 userMsg = "Invalid email or password. Please try again or sign up.";
             } else if (err.code === 'auth/email-already-in-use') {
                 userMsg = "This email is already registered. Please login instead.";
             } else if (err.code === 'auth/weak-password') {
-                userMsg = "Password must be at least 6 characters (Firebase restriction).";
+                userMsg = "Password must be at least 6 characters.";
             } else if (err.message) {
                 userMsg = err.message;
             }
-
             setError(userMsg);
         } finally {
             setIsLoadingLocal(false);
@@ -76,9 +69,13 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         } catch (err: any) {
             console.error("Google Login Error:", err);
             if (err.code === 'auth/unauthorized-domain') {
-                setError("Domain not authorized. Add your URL to Firebase Console > Authentication > Settings > Authorized Domains.");
+                setError("Add your domain to Firebase Console → Authentication → Settings → Authorized Domains.");
+            } else if (err.code === 'auth/popup-closed-by-user') {
+                setError("Google login was cancelled. Please try again.");
+            } else if (err.code === 'auth/popup-blocked') {
+                setError("Popup was blocked by your browser. Please allow popups and try again.");
             } else {
-                setError(err.message || "Google login failed.");
+                setError(err.message || "Google login failed. Please try again.");
             }
         } finally {
             setIsLoadingLocal(false);
@@ -114,7 +111,6 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
                         <div className="p-8">
                             <div className="text-center mb-8">
-
                                 <h2 className="text-2xl font-bold text-white mb-2">
                                     {isLogin ? "Login" : "Create Account"}
                                 </h2>
@@ -144,6 +140,36 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                     {success}
                                 </motion.div>
                             )}
+
+                            {/* ✅ Google Login FIRST — better UX */}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleGoogleLogin}
+                                disabled={isLoadingLocal}
+                                className="w-full h-11 bg-transparent border-zinc-800 text-white hover:bg-zinc-900 rounded-xl transition-all mb-6"
+                            >
+                                {isLoadingLocal ? (
+                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+                                ) : (
+                                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                )}
+                                Continue with Google
+                            </Button>
+
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-zinc-800"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-zinc-950 px-2 text-zinc-500">Or with email</span>
+                                </div>
+                            </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 {!isLogin && (
@@ -177,24 +203,56 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                     </div>
                                 </div>
 
+                                {/* ✅ Password with show/hide toggle */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium text-zinc-400 ml-1">Password</label>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                                         <Input
-                                            type="password"
-                                            placeholder="Min. 6 chars"
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Min. 6 characters"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
-                                            className="pl-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 h-11 rounded-xl text-base transition-all shadow-none outline-none focus:ring-0"
+                                            className="pl-10 pr-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 h-11 rounded-xl text-base transition-all shadow-none outline-none focus:ring-0"
                                         />
+                                        {/* ✅ Eye toggle button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                                        >
+                                            {showPassword
+                                                ? <EyeOff className="w-4 h-4" />
+                                                : <Eye className="w-4 h-4" />
+                                            }
+                                        </button>
                                     </div>
+                                    {/* ✅ Password strength indicator */}
+                                    {!isLogin && password.length > 0 && (
+                                        <div className="flex gap-1 mt-1">
+                                            {[1, 2, 3, 4].map((i) => (
+                                                <div
+                                                    key={i}
+                                                    className={cn(
+                                                        "h-1 flex-1 rounded-full transition-all",
+                                                        password.length >= i * 3
+                                                            ? password.length >= 10
+                                                                ? "bg-green-500"
+                                                                : password.length >= 6
+                                                                    ? "bg-yellow-500"
+                                                                    : "bg-red-500"
+                                                            : "bg-zinc-800"
+                                                    )}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <Button
                                     disabled={isLoadingLocal}
-                                    className="w-full h-11 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl mt-4 transition-all active:scale-[0.98]"
+                                    className="w-full h-11 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl mt-2 transition-all active:scale-[0.98]"
                                 >
                                     {isLoadingLocal ? (
                                         <div className="flex items-center gap-2">
@@ -208,43 +266,6 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                         </div>
                                     )}
                                 </Button>
-
-                                <div className="relative my-6">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-zinc-800"></div>
-                                    </div>
-                                    <div className="relative flex justify-center text-xs uppercase">
-                                        <span className="bg-zinc-950 px-2 text-zinc-500">Or continue with</span>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleGoogleLogin}
-                                    disabled={isLoadingLocal}
-                                    className="w-full h-11 bg-transparent border-zinc-800 text-white hover:bg-zinc-900 rounded-xl transition-all"
-                                >
-                                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                                        <path
-                                            fill="currentColor"
-                                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                                        />
-                                        <path
-                                            fill="currentColor"
-                                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                                        />
-                                        <path
-                                            fill="currentColor"
-                                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                                        />
-                                        <path
-                                            fill="currentColor"
-                                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                                        />
-                                    </svg>
-                                    Google
-                                </Button>
                             </form>
 
                             <div className="mt-6 text-center text-sm">
@@ -252,11 +273,8 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                                     {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                                 </span>
                                 <button
-                                    onClick={() => {
-                                        setIsLogin(!isLogin);
-                                        setError("");
-                                    }}
-                                    className="text-white hover:underline transition-all font-medium"
+                                    onClick={() => { setIsLogin(!isLogin); setError(""); setPassword(""); }}
+                                    className="text-white hover:underline font-medium"
                                 >
                                     {isLogin ? "Sign up" : "Login"}
                                 </button>
@@ -268,3 +286,21 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         </AnimatePresence>
     );
 };
+// ```
+
+// ---
+
+// **What changed:**
+// 1. ✅ **Google button moved to top** — better UX, users see it first
+// 2. ✅ **Google logo now colorful** — red/blue/yellow/green like real Google button
+// 3. ✅ **Eye icon** — click to show/hide password
+// 4. ✅ **Password strength bar** — shows red/yellow/green based on length
+// 5. ✅ **Better Google error messages** — popup blocked, cancelled etc.
+
+// ---
+
+// **For Google login to work on Vercel:**
+
+// Go to **Firebase Console → Authentication → Settings → Authorized Domains** → Add:
+// ```
+// jarvis-ten-gray.vercel.app
