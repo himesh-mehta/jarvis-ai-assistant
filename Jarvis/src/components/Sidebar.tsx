@@ -28,7 +28,8 @@ import {
     Clock as ClockIcon,
     ChevronRight,
     Search,
-    Activity
+    Activity,
+    Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,8 @@ interface SidebarProps {
     userPrompts?: any[];
     currentChatId?: string;
     onSyncHistory?: () => void;
+    openAndroid: () => void;
+    openAgent?: () => void;
 }
 
 interface VoiceMessage {
@@ -90,7 +93,6 @@ const PROVIDER_ICONS: Record<string, string> = {
     huggingface: "🤗",
 };
 
-// ✅ Detect language of text
 function detectLanguage(text: string): "hi-IN" | "en-US" {
     const isHindi = /[\u0900-\u097F]/.test(text);
     return isHindi ? "hi-IN" : "en-US";
@@ -111,12 +113,12 @@ export const Sidebar = React.memo(({
     userPrompts = [],
     currentChatId,
     onMobileClose,
-    onSyncHistory
+    onSyncHistory,
+    openAndroid,
+    openAgent,
 }: SidebarProps) => {
     const router = useRouter();
     const { logout } = useAuth();
-
-
 
     const scrollToPrompt = (id: string) => {
         const el = document.getElementById(id);
@@ -131,7 +133,6 @@ export const Sidebar = React.memo(({
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
 
-    // ─── Voice Chat State ──────────────────────────────────────────────
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [voiceOpen, setVoiceOpen] = useState(false);
     const [isUserTalking, setIsUserTalking] = useState(false);
@@ -177,12 +178,8 @@ export const Sidebar = React.memo(({
         if (voiceMessages.length > 0 && voiceSessionIdRef.current) {
             const firstUserMsg = voiceMessages.find(m => m.role === 'user')?.content || "Voice Session";
             const title = summarizeTitle(firstUserMsg);
-
-            // Sync history first so the new chat shows up
             onSyncHistory?.();
-
             onSelectChat(voiceSessionIdRef.current, title);
-            // Clear for next session
             setVoiceMessages([]);
             voiceSessionIdRef.current = "";
         }
@@ -225,10 +222,10 @@ export const Sidebar = React.memo(({
         { id: "new", icon: <Plus className="w-4.5 h-4.5" />, label: "New chat" },
         { id: "Chats", icon: <MessageCircle className="w-4.5 h-4.5" />, label: "Chats" },
         { id: "voice", icon: <Mic className="w-4.5 h-4.5" />, label: "Talk to Jarvis" },
+        { id: "command", icon: <Bot className="w-4.5 h-4.5" />, label: "Command to Jarvis" },
         { id: "projects", icon: <Library className="w-4.5 h-4.5" />, label: "Projects" },
     ];
 
-    // ✅ Hindi + English voice support
     function speakText(text: string) {
         window.speechSynthesis.cancel();
 
@@ -260,9 +257,7 @@ export const Sidebar = React.memo(({
                 }
 
                 utterance.onstart = () => setIsSpeaking(true);
-                utterance.onend = () => {
-                    setIsSpeaking(false);
-                };
+                utterance.onend = () => setIsSpeaking(false);
                 utterance.onerror = () => setIsSpeaking(false);
                 window.speechSynthesis.speak(utterance);
             };
@@ -376,7 +371,6 @@ export const Sidebar = React.memo(({
             const lastResult = event.results[event.results.length - 1];
             if (lastResult.isFinal) {
                 const transcript = lastResult[0].transcript;
-                // Don't stop yet, just handle the message
                 handleVoiceCommand(transcript);
             }
         };
@@ -476,6 +470,10 @@ export const Sidebar = React.memo(({
                                                 setIsHistoryOpen(true);
                                                 return;
                                             }
+                                            if (item.id === "command") {
+                                                openAgent?.();
+                                                return;
+                                            }
                                             if (item.id === "new") onNewChat();
                                             if (item.id === "projects") {
                                                 setIsProjectsOpen(true);
@@ -566,7 +564,6 @@ export const Sidebar = React.memo(({
                         )}
                     </AnimatePresence>
                 </div>
-
 
                 {!isCollapsed && (
                     <div className="mt-6 flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -682,7 +679,6 @@ export const Sidebar = React.memo(({
                     </div>
                 )}
 
-
                 <div className="mt-auto p-2 border-t border-white/5">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -711,8 +707,9 @@ export const Sidebar = React.memo(({
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-            </motion.aside >
+            </motion.aside>
 
+            {/* Voice Modal */}
             <AnimatePresence>
                 {voiceOpen && (
                     <motion.div
@@ -727,13 +724,11 @@ export const Sidebar = React.memo(({
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
                             className="w-full h-full sm:w-[500px] sm:h-[85vh] sm:max-h-[750px] bg-[#020617] sm:border border-blue-500/20 sm:rounded-[40px] flex flex-col relative overflow-hidden shadow-[0_0_100px_rgba(59,130,246,0.15)]"
                         >
-                            {/* Neural Background */}
                             <div className="absolute inset-0 opacity-10 pointer-events-none">
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#3b82f6_1px,transparent_1px)] bg-[size:32px_32px]" />
                                 <div className="absolute top-0 left-0 w-full h-[1px] bg-blue-500/30 animate-scan" />
                             </div>
 
-                            {/* Header */}
                             <div className="p-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02] relative z-10">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
@@ -763,16 +758,11 @@ export const Sidebar = React.memo(({
                                 </Button>
                             </div>
 
-                            {/* Runner Visualization Area */}
                             <div className="h-40 sm:h-32 relative overflow-hidden bg-gradient-to-b from-blue-500/15 via-transparent to-transparent border-b border-white/5 shrink-0">
-                                {/* Neural Horizon Grid */}
                                 <div className="absolute inset-0 [perspective:800px] opacity-10">
-                                    <div
-                                        className="absolute inset-0 bg-[linear-gradient(to_right,#3b82f6_2px,transparent_2px),linear-gradient(to_bottom,#3b82f6_2px,transparent_2px)] bg-[size:50px_50px] [transform:rotateX(75deg)_translateY(-30%)] animate-data-stream"
-                                    />
+                                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#3b82f6_2px,transparent_2px),linear-gradient(to_bottom,#3b82f6_2px,transparent_2px)] bg-[size:50px_50px] [transform:rotateX(75deg)_translateY(-30%)] animate-data-stream" />
                                 </div>
 
-                                {/* Flowing Data Sparks */}
                                 <div className="absolute inset-0 pointer-events-none">
                                     {[...Array(15)].map((_, i) => (
                                         <motion.div
@@ -790,10 +780,8 @@ export const Sidebar = React.memo(({
                                     ))}
                                 </div>
 
-                                {/* The Synaptic Runner (Interactive Character) */}
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="relative">
-                                        {/* Dynamic Sound Waves */}
                                         <AnimatePresence>
                                             {isUserTalking && (
                                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -818,21 +806,15 @@ export const Sidebar = React.memo(({
                                             )}
                                         >
                                             <div className="w-16 h-16 relative flex items-center justify-center">
-                                                {/* Cyber Skin */}
                                                 <div className="absolute inset-0 bg-blue-600/30 rounded-2xl rotate-45 border-2 border-blue-400/50 shadow-[0_0_30px_rgba(59,130,246,0.6)]" />
-
-                                                {/* Energy Core */}
                                                 <motion.div
                                                     animate={{ rotate: 360 }}
                                                     transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                                                     className="w-10 h-10 bg-white rounded-full flex items-center justify-center relative shadow-[0_0_20px_white]"
                                                 >
                                                     <Bot className="w-5 h-5 text-blue-600" />
-                                                    {/* Orbiting Particles */}
                                                     <div className="absolute -inset-2 border-2 border-blue-500/20 rounded-full border-t-blue-400 animate-spin" />
                                                 </motion.div>
-
-                                                {/* Animated Leg-Sparks (The 'Running' effect) */}
                                                 {isUserTalking && (
                                                     <div className="absolute -bottom-4 left-0 right-0 flex justify-between px-2">
                                                         <motion.div animate={{ height: [4, 12, 4] }} transition={{ duration: 0.2, repeat: Infinity }} className="w-1 bg-blue-400 rounded-full" />
@@ -844,16 +826,13 @@ export const Sidebar = React.memo(({
                                     </div>
 
                                     <div className="absolute bottom-4 flex flex-col items-center gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.5em] italic drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
-                                                {isUserTalking ? "Streaming Neural Data" : "Stable Connection"}
-                                            </span>
-                                        </div>
+                                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.5em] italic drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
+                                            {isUserTalking ? "Streaming Neural Data" : "Stable Connection"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Chat Transcript */}
                             <ScrollArea className="flex-1 p-4 relative jarvis-scrollbar">
                                 <div className="space-y-6">
                                     {voiceMessages.map((msg, i) => (
@@ -888,10 +867,8 @@ export const Sidebar = React.memo(({
                                 </div>
                             </ScrollArea>
 
-                            {/* Interaction Area */}
                             <div className="p-6 sm:p-3 pb-10 sm:pb-3 border-t border-white/5 bg-white/[0.01] flex flex-col items-center gap-3 relative shrink-0">
                                 <div className="absolute inset-0 bg-blue-500/[0.02] pointer-events-none" />
-
                                 <div className="flex items-center gap-8 relative z-10 w-full justify-center">
                                     <motion.button
                                         whileHover={{ scale: 1.05 }}
@@ -912,7 +889,6 @@ export const Sidebar = React.memo(({
                                         )}
                                     </motion.button>
                                 </div>
-
                                 <div className="text-center relative z-10">
                                     <p className={cn(
                                         "text-xs font-bold transition-all uppercase tracking-[0.3em]",
@@ -930,7 +906,7 @@ export const Sidebar = React.memo(({
                 )}
             </AnimatePresence>
 
-            {/* ── Chat History Wide Popup ── */}
+            {/* Chat History Modal */}
             <AnimatePresence>
                 {isHistoryOpen && (
                     <motion.div
@@ -945,7 +921,6 @@ export const Sidebar = React.memo(({
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             className="relative w-full max-w-5xl h-full max-h-[85vh] bg-[#020617] border-y border-jarvis-neon/10 rounded-3xl shadow-[0_0_30px_rgba(0,229,255,0.05)] overflow-hidden flex flex-col"
                         >
-                            {/* Header */}
                             <div className="flex items-center justify-between px-6 py-7 border-b border-jarvis-neon/10 bg-jarvis-card/50 backdrop-blur-2xl sticky top-0 z-10 animate-jarvis-line">
                                 <div className="flex items-center gap-4 flex-1">
                                     {!isSearching ? (
@@ -992,7 +967,6 @@ export const Sidebar = React.memo(({
                                 </div>
                             </div>
 
-                            {/* Grid Content */}
                             <ScrollArea className="flex-1 pl-6 pr-4 pb-8 pt-2 jarvis-scrollbar">
                                 {chats.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
@@ -1014,7 +988,6 @@ export const Sidebar = React.memo(({
                                                 const dateObj = chat.updatedAt ? new Date(chat.updatedAt) : null;
                                                 const timeString = dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
                                                 const dateString = dateObj ? dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-
                                                 const isActive = chat.id.toString() === currentChatId;
 
                                                 return (
@@ -1059,9 +1032,7 @@ export const Sidebar = React.memo(({
                                                             </div>
                                                         </div>
 
-                                                        {/* Actions Overlay */}
                                                         <div className="flex items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 sm:translate-x-4 group-hover:translate-x-0 shrink-0">
-                                                            {/* Desktop Actions */}
                                                             <div className="hidden sm:flex items-center bg-black/40 p-1 rounded-xl border border-jarvis-neon/10 backdrop-blur-md">
                                                                 <Button
                                                                     variant="ghost"
@@ -1099,7 +1070,6 @@ export const Sidebar = React.memo(({
                                                                 </Button>
                                                             </div>
 
-                                                            {/* Mobile Actions Dropdown */}
                                                             <div className="flex sm:hidden">
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
@@ -1148,7 +1118,6 @@ export const Sidebar = React.memo(({
                                                                 </DropdownMenu>
                                                             </div>
 
-                                                            {/* Desktop 'Go to Chat' */}
                                                             <div className="hidden sm:flex jarvis-neon-btn px-5 py-2 rounded-full items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] ml-2">
                                                                 <span>Go to Chat</span>
                                                                 <ChevronRight className="w-4 h-4" />
@@ -1188,23 +1157,15 @@ export const Sidebar = React.memo(({
                             >
                                 <X className="w-6 h-6" />
                             </button>
-
                             <div className="relative w-full overflow-hidden flex justify-center items-center h-full">
                                 <motion.div
-                                    animate={{
-                                        x: [-400, 400],
-                                    }}
-                                    transition={{
-                                        duration: 8,
-                                        repeat: Infinity,
-                                        ease: "linear"
-                                    }}
+                                    animate={{ x: [-400, 400] }}
+                                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                                     className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-blue tracking-tighter whitespace-nowrap drop-shadow-[0_0_15px_rgba(0,210,255,0.5)]"
                                 >
                                     AMAN BC
                                 </motion.div>
                             </div>
-
                             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(0,170,255,0.15)_0%,transparent_70%)]" />
                         </motion.div>
                     </div>

@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "JARVIS Browser Agent",
+  "version": "1.0.0",
+  "description": "JARVIS AI controls your browser automatically",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "JARVIS Agent"
+  }
+}

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Menu, PanelLeft, Plus, Smartphone } from "lucide-react";
+import { Menu, PanelLeft, Plus, Smartphone, Terminal } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
 import { InputPanel } from "@/components/InputPanel";
 import { AndroidControl } from '@/components/AndroidControl';
+import { AgentModal } from '@/components/AgentModal';
 import { parseCommand } from '@/app/lib/commandParser';
 import dynamic from "next/dynamic";
 const ParticleBackground = dynamic(() => import("@/components/ParticleBackground"), { ssr: false });
@@ -26,6 +27,7 @@ export default function Home() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAndroidOpen, setIsAndroidOpen] = useState(false);
+  const [isAgentOpen, setIsAgentOpen] = useState(false); // ✅ Agent modal
 
   const { user, loading: authLoading } = useAuth();
 
@@ -73,7 +75,6 @@ export default function Home() {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           if (!isVoiceOpen) {
-            // Dictation mode: append to input
             setInput(prev => prev + (prev.endsWith(" ") || !prev ? "" : " ") + transcript.trim());
           } else {
             finalTranscript += transcript + " ";
@@ -95,12 +96,9 @@ export default function Home() {
     recognition.start();
     recognitionRef.current = recognition;
 
-    return () => {
-      recognition.stop();
-    };
+    return () => { recognition.stop(); };
   }, [isVoiceRecording]);
 
-  // ── Auto-collapse sidebar on tablet/mobile size ───────────
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -109,12 +107,11 @@ export default function Home() {
         setIsSidebarCollapsed(false);
       }
     };
-    handleResize(); // Initial check
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ── Generate sessionId after user loads ──────────────────
   useEffect(() => {
     if (user) {
       setSessionId('session-' + Math.random().toString(36).slice(2, 9));
@@ -125,7 +122,6 @@ export default function Home() {
     }
   }, [user]);
 
-  // ── Sync history on login ─────────────────────────────────
   useEffect(() => {
     if (!user || authLoading) return;
     syncHistory();
@@ -158,7 +154,7 @@ export default function Home() {
     if (!user) return;
     setSessionId(id);
     setMessages([]);
-    setIsMobileMenuOpen(false); // Close mobile menu if open
+    setIsMobileMenuOpen(false);
     try {
       const token = await user.getIdToken();
       const res = await fetch(`/api/history?sessionId=${id}`, {
@@ -185,7 +181,7 @@ export default function Home() {
     setMessages([]);
     setSessionId('session-' + Math.random().toString(36).slice(2, 9));
     setIsLoading(false);
-    setIsMobileMenuOpen(false); // Close mobile menu
+    setIsMobileMenuOpen(false);
   };
 
   const handleDeleteChat = async (id: string) => {
@@ -224,46 +220,38 @@ export default function Home() {
     }
   };
 
-  // ── Global Keyboard Shortcuts ─────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // (1) New Chat (Ctrl+K)
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         handleNewChat();
         return;
       }
-
-
-
-      // (3) Toggle Sidebar (Ctrl+S)
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         setIsSidebarCollapsed(prev => !prev);
         return;
       }
-
-      // (4) Arrow Key Scrolling
+      // ✅ Ctrl+J opens Agent/Command modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+        e.preventDefault();
+        setIsAgentOpen(true);
+        return;
+      }
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         const scrollArea = document.querySelector('#main-chat-scroll-area [data-radix-scroll-area-viewport]');
         if (scrollArea) {
           e.preventDefault();
-
           if (e.repeat) {
-            // Sustained press: Continuous, high-speed fluid scroll (behavior 'auto')
-            // Using smaller step but NO throttle results in native-like rapid glide
             const scrollStep = e.key === 'ArrowUp' ? -40 : 40;
             scrollArea.scrollBy({ top: scrollStep, behavior: 'auto' });
           } else {
-            // Single tap: Premium liquid smooth scroll (behavior 'smooth')
-            // Using larger step for navigation efficiency
             const scrollStep = e.key === 'ArrowUp' ? -250 : 250;
             scrollArea.scrollBy({ top: scrollStep, behavior: 'smooth' });
           }
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [sessionId, chatHistoryList, isSidebarCollapsed]);
@@ -272,7 +260,6 @@ export default function Home() {
     if (!content.trim() || isLoading) return;
     if (!user) { setIsAuthOpen(true); return; }
 
-    // (A) Phone Command Detection
     const parsed = parseCommand(content);
     if (parsed.isCommand && parsed.command !== 'agent_task') {
       const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -342,10 +329,7 @@ export default function Home() {
       const apiHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ message: content, sessionId, history: apiHistory }),
         signal: controller.signal,
       });
@@ -521,19 +505,11 @@ export default function Home() {
     );
   }
 
-
-
   const sidebarProps = {
     isCollapsed: isSidebarCollapsed,
     setIsCollapsed: setIsSidebarCollapsed,
-    openSettings: () => {
-      setIsSettingsOpen(true);
-      setIsMobileMenuOpen(false);
-    },
-    openAuth: () => {
-      setIsAuthOpen(true);
-      setIsMobileMenuOpen(false);
-    },
+    openSettings: () => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); },
+    openAuth: () => { setIsAuthOpen(true); setIsMobileMenuOpen(false); },
     onNewChat: handleNewChat,
     onSelectChat: handleSelectChat,
     onDeleteChat: handleDeleteChat,
@@ -544,6 +520,8 @@ export default function Home() {
     userPrompts: userPrompts,
     currentChatId: sessionId,
     onSyncHistory: syncHistory,
+    openAndroid: () => { setIsAndroidOpen(true); setIsMobileMenuOpen(false); },
+    openAgent: () => { setIsAgentOpen(true); setIsMobileMenuOpen(false); }, // ✅ new
   };
 
   return (
@@ -551,7 +529,7 @@ export default function Home() {
       <ParticleBackground />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.5),rgba(2,6,23,1))] pointer-events-none z-0" />
 
-      {/* ── Mobile Sidebar (Drawer) ── */}
+      {/* ── Mobile Sidebar ── */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetContent side="left" className="p-0 border-none bg-transparent w-[280px]" showCloseButton={false}>
           <SheetHeader className="sr-only">
@@ -559,11 +537,7 @@ export default function Home() {
             <SheetDescription>Access chat history and settings</SheetDescription>
           </SheetHeader>
           <div className="h-full bg-[#020617]">
-            <Sidebar
-              {...sidebarProps}
-              isCollapsed={false}
-              onMobileClose={() => setIsMobileMenuOpen(false)}
-            />
+            <Sidebar {...sidebarProps} isCollapsed={false} onMobileClose={() => setIsMobileMenuOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>
@@ -576,40 +550,39 @@ export default function Home() {
       <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
         {/* ── Mobile Header ── */}
         <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/5 bg-background/50 backdrop-blur-md">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="text-white/40 hover:text-white"
-          >
+          <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-white/40 hover:text-white">
             <Menu className="w-6 h-6" />
           </Button>
           <span className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-purple">
             JARVIS
           </span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsAndroidOpen(true)}
-              className="p-2 text-white/40 hover:text-white"
-            >
+            <button onClick={() => setIsAgentOpen(true)} className="p-2 text-white/40 hover:text-white">
+              <Terminal className="w-5 h-5" />
+            </button>
+            <button onClick={() => setIsAndroidOpen(true)} className="p-2 text-white/40 hover:text-white">
               <Smartphone className="w-5 h-5" />
             </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNewChat}
-              className="text-white/40 hover:text-white"
-            >
+            <Button variant="ghost" size="icon" onClick={handleNewChat} className="text-white/40 hover:text-white">
               <Plus className="w-5 h-5" />
             </Button>
           </div>
         </div>
 
         {/* ── Desktop Header ── */}
-        <div className="hidden lg:flex items-center justify-end px-6 h-14 border-b border-white/5 bg-background/20 backdrop-blur-sm">
+        <div className="hidden lg:flex items-center justify-end px-6 h-14 border-b border-white/5 bg-background/20 backdrop-blur-sm gap-3">
+          {/* ✅ Command to JARVIS button */}
+          <button
+            onClick={() => setIsAgentOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-neon-blue/20 bg-neon-blue/5 hover:bg-neon-blue/10 transition-all text-xs text-neon-blue hover:text-white mr-1"
+          >
+            <Terminal className="w-4 h-4" />
+            Command to JARVIS
+            <span className="text-[10px] text-white/20 font-mono">Ctrl+J</span>
+          </button>
           <button
             onClick={() => setIsAndroidOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs text-white/60 hover:text-white mr-4"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs text-white/60 hover:text-white"
           >
             <Smartphone className="w-4 h-4" />
             Android
@@ -626,9 +599,7 @@ export default function Home() {
               onSendImage={handleSendWithImage}
               onSendFile={handleSendFile}
               isLoading={isLoading}
-              onVoiceChat={() => {
-                setIsVoiceRecording(!isVoiceRecording);
-              }}
+              onVoiceChat={() => setIsVoiceRecording(!isVoiceRecording)}
               onStop={handleStopGeneration}
               sessionId={sessionId}
               history={messages}
@@ -647,25 +618,26 @@ export default function Home() {
 
       <VoiceModal
         isOpen={isVoiceOpen}
-        onClose={() => {
-          setIsVoiceOpen(false);
-          setIsVoiceRecording(false);
-        }}
+        onClose={() => { setIsVoiceOpen(false); setIsVoiceRecording(false); }}
         isVoiceRecording={isVoiceRecording}
         isSpeaking={isLoading}
         voiceLoading={isLoading}
         voiceMessages={messages.slice(-10).map(m => ({
           role: m.role,
           content: m.content,
-          provider: m.role === 'assistant' ? 'Groq' : undefined // Example provider
+          provider: m.role === 'assistant' ? 'Groq' : undefined
         }))}
         onToggleRecording={() => setIsVoiceRecording(!isVoiceRecording)}
         interimTranscript={interimTranscript}
       />
 
-      <AndroidControl
-        isOpen={isAndroidOpen}
-        onClose={() => setIsAndroidOpen(false)}
+      <AndroidControl isOpen={isAndroidOpen} onClose={() => setIsAndroidOpen(false)} />
+
+      {/* ✅ Agent Modal */}
+      <AgentModal
+        isOpen={isAgentOpen}
+        onClose={() => setIsAgentOpen(false)}
+        user={user}
       />
     </main>
   );
