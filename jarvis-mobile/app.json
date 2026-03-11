@@ -10,13 +10,17 @@
     "ios": {
 
       "supportsTablet": true,
-      "bundleIdentifier": "com.jarvis.mobile"
+      "bundleIdentifier": "com.jarvis.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app uses the microphone to communicate with JARVIS."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "package": "com.jarvis.mobile"
+      "package": "com.jarvis.mobile",
+      "permissions": ["RECORD_AUDIO"]
     },
     "web": {
       "bundler": "metro",

@@ -57,6 +57,36 @@ export async function DELETE(req: NextRequest) {
 
     await connectDB();
     await Chat.deleteOne({ sessionId, userId: uid });  // ← only delete if owned by user
-
+ 
+    return NextResponse.json({ success: true });
+}
+ 
+// ─── PATCH: Update session (Pin/Rename) ─────────────────────────────
+export async function PATCH(req: NextRequest) {
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+ 
+    let uid = '';
+    try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        uid = decoded.uid;
+    } catch {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+ 
+    const { sessionId, title, pinned } = await req.json();
+    if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
+ 
+    await connectDB();
+    
+    const update: any = {};
+    if (title !== undefined) update.title = title;
+    if (pinned !== undefined) update.pinned = pinned;
+ 
+    await Chat.updateOne(
+        { sessionId, userId: uid },
+        { $set: update }
+    );
+ 
     return NextResponse.json({ success: true });
 }
