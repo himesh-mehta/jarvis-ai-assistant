@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Groq from 'groq-sdk';
 import admin from '@/lib/firebase-admin';
+
+// Force dynamic to prevent 404/caching on some serverless environments
+export const dynamic = 'force-dynamic';
+
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(req: NextRequest) {
     const token = req.headers.get('Authorization')?.replace('Bearer ', '');
@@ -16,21 +24,20 @@ export async function POST(req: NextRequest) {
         const file = formData.get('file') as Blob;
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
-        const groqFormData = new FormData();
-        groqFormData.append('file', file, 'audio.m4a');
-        groqFormData.append('model', 'whisper-large-v3');
-
-        const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            },
-            body: groqFormData,
+        // Convert Blob to File-like object for Groq SDK
+        const transcription = await groq.audio.transcriptions.create({
+            file: file as any,
+            model: 'whisper-large-v3',
         });
 
-        const data = await groqRes.json();
-        return NextResponse.json(data);
+        return NextResponse.json(transcription);
     } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        console.error("[Whisper Error]", err);
+        return NextResponse.json({ error: err.message || 'Transcription failed' }, { status: 500 });
     }
+}
+
+// Add GET handler to help debug 404s
+export async function GET() {
+    return NextResponse.json({ status: 'Whisper endpoint is online', methods: ['POST'] });
 }

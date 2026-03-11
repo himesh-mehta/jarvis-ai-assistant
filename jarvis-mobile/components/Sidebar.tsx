@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAuth } from '../hooks/auth';
 
@@ -22,13 +22,15 @@ interface SidebarProps {
   onPinChat?: (id: string) => void;
   onRenameChat?: (id: string) => void;
   onVoicePress?: () => void;
+  onHistoryPress?: () => void;
 }
 
 export default function Sidebar({ 
   isOpen, onClose, onNewChat, onSelectChat, 
   recentChats = [], isHistoryLoading = false,
   activeSessionId, onDeleteChat, onPinChat, onRenameChat,
-  onVoicePress
+  onVoicePress,
+  onHistoryPress
 }: SidebarProps) {
 
   const { width } = useWindowDimensions();
@@ -118,6 +120,7 @@ export default function Sidebar({
               style={styles.navItem}
               onPress={() => {
                 if (item.id === 'new') onNewChat();
+                if (item.id === 'chats') router.push('/(tabs)/history');
                 if (item.id === 'voice' && onVoicePress) onVoicePress();
                 if (item.id === 'command') router.replace('/(tabs)/core');
                 onClose();
@@ -163,7 +166,7 @@ export default function Sidebar({
                   {chat.title}
                 </Text>
                 
-                {chat.pinned && <Ionicons name="pin" size={10} color={Colors.neonBlue} style={styles.pinIcon} />}
+                {chat.pinned && <Ionicons name="pin" size={14} color="#BF36FF" style={styles.pinIcon} />}
               </TouchableOpacity>
             ))}
             {recentChats.length === 0 && !isHistoryLoading && (
@@ -223,23 +226,23 @@ export default function Sidebar({
             <TouchableOpacity 
               style={styles.bottomSheetItem} 
               onPress={() => {
-                if (menuOpenId && onPinChat) onPinChat(menuOpenId);
-                setMenuOpenId(null);
-              }}
-            >
-              <Ionicons name="bookmark-outline" size={18} color="#FFF" />
-              <Text style={styles.bottomSheetText}>Pin Chat</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.bottomSheetItem} 
-              onPress={() => {
                 if (menuOpenId && onRenameChat) onRenameChat(menuOpenId);
                 setMenuOpenId(null);
               }}
             >
-              <Ionicons name="pencil-outline" size={18} color="#FFF" />
-              <Text style={styles.bottomSheetText}>Rename Chat</Text>
+              <MaterialCommunityIcons name="pencil-outline" size={20} color={Colors.neonBlue} />
+              <Text style={styles.bottomSheetText}>Rename</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.bottomSheetItem} 
+              onPress={() => {
+                if (menuOpenId && onPinChat) onPinChat(menuOpenId);
+                setMenuOpenId(null);
+              }}
+            >
+              <MaterialCommunityIcons name="pin-outline" size={20} color="#BF36FF" />
+              <Text style={styles.bottomSheetText}>Pin</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -249,15 +252,8 @@ export default function Sidebar({
                 setMenuOpenId(null);
               }}
             >
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              <Text style={[styles.bottomSheetText, { color: '#EF4444' }]}>Delete Chat</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.bottomSheetItem, styles.cancelItem]} 
-              onPress={() => setMenuOpenId(null)}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <MaterialCommunityIcons name="trash-can-outline" size={20} color="rgba(255,255,255,0.4)" />
+              <Text style={[styles.bottomSheetText, { color: '#FF4D4D' }]}>Delete</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -370,7 +366,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   bottomSheet: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0a0f1d',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
@@ -397,7 +393,7 @@ const styles = StyleSheet.create({
   bottomSheetItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 24,
     gap: 16,
   },

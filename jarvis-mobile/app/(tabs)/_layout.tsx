@@ -39,6 +39,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={focused ? "hardware-chip" : "hardware-chip-outline"} label="Core" /> 
         }} 
       />
+      <Tabs.Screen 
+        name="history" 
+        options={{ 
+          href: null, // Hide it if you want it purely as a sub-page, but defined here for layout
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={focused ? "time" : "time-outline"} label="History" /> 
+        }} 
+      />
     </Tabs>
 
   );

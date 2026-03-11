@@ -6,8 +6,11 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["*"]
-    }
+      "@/*": ["./*"]
+    },
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true
   },
   "include": [
     "**/*.ts",

@@ -1,81 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, 
-  ScrollView, Animated, useWindowDimensions, 
+  Animated, useWindowDimensions, 
   Platform, ActivityIndicator
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
-
-interface VoiceMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  provider?: string;
-  isInterim?: boolean;
-}
-
-const PROVIDER_ICONS: Record<string, string> = {
-  groq: "⚡",
-  gemini: "💎",
-  cohere: "🌿",
-  huggingface: "🤗",
-};
-
-// ── WordByWord for Mobile (Simulated with simple fading) ────────────────
-const WordByWord = ({ text, isInterim }: { text: string; isInterim?: boolean }) => {
-  return (
-    <Text style={[styles.messageText, isInterim && styles.interimText]}>
-      {text}
-      {isInterim && <Text style={styles.cursor}>|</Text>}
-    </Text>
-  );
-};
-
-// ── Real-time Audio Visualizer ────────────────────────────
-const LiveVisualizer = ({ isActive, theme = 'blue' }: { isActive: boolean; theme?: 'blue' | 'red' | 'purple' }) => {
-  const bars = Array.from({ length: 20 }).map((_, i) => useRef(new Animated.Value(4)).current);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isActive) {
-      interval = setInterval(() => {
-        bars.forEach(bar => {
-          Animated.spring(bar, {
-            toValue: Math.random() * 32 + 4,
-            useNativeDriver: false, // height doesn't support native driver in most RN versions
-            friction: 7,
-            tension: 50,
-          }).start();
-        });
-      }, 150);
-    } else {
-      bars.forEach(bar => {
-        Animated.spring(bar, {
-          toValue: 4,
-          useNativeDriver: false,
-        }).start();
-      });
-    }
-    return () => clearInterval(interval);
-  }, [isActive]);
-
-  const barColor = theme === 'red' ? '#EF4444' : theme === 'purple' ? '#9D50BB' : Colors.neonBlue;
-
-  return (
-    <View style={styles.visualizerContainer}>
-      {bars.map((bar, i) => (
-        <Animated.View
-          key={i}
-          style={[
-            styles.visualizerBar,
-            { height: bar, backgroundColor: barColor }
-          ]}
-        />
-      ))}
-    </View>
-  );
-};
 
 interface VoiceModalProps {
   isOpen: boolean;
@@ -83,10 +13,50 @@ interface VoiceModalProps {
   isVoiceRecording: boolean;
   isSpeaking: boolean;
   voiceLoading: boolean;
-  voiceMessages: VoiceMessage[];
+  voiceMessages: any[]; 
   onToggleRecording: () => void;
   interimTranscript?: string;
 }
+
+const GridBackground = () => {
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      {/* Perspective Grid */}
+      <View style={styles.perspectiveContainer}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <View key={`h-${i}`} style={[styles.horizontalLine, { top: i * 25, opacity: 0.05 + (i * 0.05) }]} />
+        ))}
+        {Array.from({ length: 9 }).map((_, i) => (
+          <View 
+            key={`v-${i}`} 
+            style={[
+              styles.slantedLine, 
+              { 
+                left: `${10 + i * 10}%`, 
+                transform: [{ rotate: `${(i - 4) * 15}deg` }] 
+              }
+            ]} 
+          />
+        ))}
+      </View>
+
+      {/* Background Dots */}
+      {Array.from({ length: 30 }).map((_, i) => (
+        <View 
+          key={`dot-${i}`} 
+          style={[
+            styles.bgDot, 
+            { 
+              top: `${Math.random() * 100}%`, 
+              left: `${Math.random() * 100}%`,
+              opacity: 0.05 + Math.random() * 0.1
+            }
+          ]} 
+        />
+      ))}
+    </View>
+  );
+};
 
 export default function VoiceModal({
   isOpen,
@@ -98,171 +68,144 @@ export default function VoiceModal({
   onToggleRecording,
   interimTranscript = ""
 }: VoiceModalProps) {
-  const { width, height } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
-  
+  const { width } = useWindowDimensions();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0.5)).current;
+
+  // Get the most relevant text to show in the central area
+  const displayTranscript = useMemo(() => {
+    if (interimTranscript) return interimTranscript;
+    if (voiceLoading) return "Establishing neural link...";
+    
+    // Show last assistant message or user message if we just sent one
+    if (voiceMessages && voiceMessages.length > 0) {
+      const last = voiceMessages[voiceMessages.length - 1];
+      return last.content;
+    }
+    
+    return isVoiceRecording ? "System ready. Speak now..." : "";
+  }, [interimTranscript, voiceLoading, voiceMessages, isVoiceRecording]);
 
   useEffect(() => {
     if (isOpen) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true })
-      ]).start();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      
     } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 50, duration: 300, useNativeDriver: true })
-      ]).start();
+      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    let animation: Animated.CompositeAnimation;
+    if (isVoiceRecording || isSpeaking) {
+      animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ])
+      );
+      animation.start();
+    } else {
+      pulseAnim.setValue(1);
     }
-  }, [voiceMessages, interimTranscript]);
+    return () => animation?.stop();
+  }, [isVoiceRecording, isSpeaking]);
 
-  const status = useMemo(() => {
-    if (voiceLoading) return { label: 'Processing', color: '#F59E0B', theme: 'purple' as const };
-    if (isVoiceRecording) return { label: 'Listening', color: '#EF4444', theme: 'red' as const };
-    if (isSpeaking) return { label: 'Speaking', color: '#10B981', theme: 'blue' as const };
-    return { label: 'Ready', color: Colors.neonBlue, theme: 'blue' as const };
-  }, [voiceLoading, isVoiceRecording, isSpeaking]);
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.5, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   if (!isOpen) return null;
 
   return (
-    <Animated.View 
-      style={[styles.overlay, { opacity: fadeAnim }]}
-      pointerEvents={isOpen ? 'auto' : 'none'}
-    >
-      <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-        
-        <View style={styles.modalContainer}>
-          <Animated.View 
-            style={[
-              styles.modalContent, 
-              { 
-                width: width * 0.9, 
-                height: height * 0.8,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerInfo}>
-                <View style={styles.botIconContainer}>
-                  <MaterialCommunityIcons name="robot-outline" size={24} color={Colors.neonBlue} />
-                  <View style={[styles.statusDot, { backgroundColor: status.color }]} />
-                </View>
-                <View>
-                  <Text style={styles.headerTitle}>JARVIS MODE</Text>
-                  <Text style={styles.headerStatus}>Link: {status.label}</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" />
-              </TouchableOpacity>
+    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+      <GridBackground />
+      
+
+      {/* Content */}
+      <View style={styles.safeContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.botIconCircle}>
+              <MaterialCommunityIcons name="robot" size={20} color={Colors.neonBlue} />
             </View>
-
-            {/* Messages Feed */}
-            <ScrollView 
-              ref={scrollRef}
-              style={styles.messageFeed}
-              contentContainerStyle={styles.messageFeedContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {voiceMessages.length === 0 && !interimTranscript && (
-                <View style={styles.emptyState}>
-                  <MaterialCommunityIcons name="robot" size={64} color="rgba(255,255,255,0.1)" />
-                  <Text style={styles.emptyStateText}>WAITING FOR INPUT...</Text>
-                </View>
-              )}
-
-              {voiceMessages.map((msg, idx) => (
-                <View 
-                  key={idx} 
-                  style={[
-                    styles.messageGroup, 
-                    msg.role === 'user' ? styles.userGroup : styles.assistantGroup
-                  ]}
-                >
-                  <View style={[
-                    styles.avatar, 
-                    msg.role === 'user' ? styles.userAvatar : styles.assistantAvatar
-                  ]}>
-                    <Ionicons 
-                      name={msg.role === 'user' ? "person-outline" : "hardware-chip-outline"} 
-                      size={14} 
-                      color={msg.role === 'user' ? Colors.neonPurple : Colors.neonBlue} 
-                    />
-                  </View>
-                  <View style={[
-                    styles.bubble, 
-                    msg.role === 'user' ? styles.userBubble : styles.assistantBubble
-                  ]}>
-                    <WordByWord text={msg.content} />
-                    {msg.provider && (
-                      <View style={styles.providerBadge}>
-                        <Text style={styles.providerText}>
-                          {PROVIDER_ICONS[msg.provider.toLowerCase()] || "●"} {msg.provider}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))}
-
-              {interimTranscript ? (
-                <View style={[styles.messageGroup, styles.userGroup]}>
-                  <View style={[styles.avatar, styles.userAvatar]}>
-                    <Ionicons name="person-outline" size={14} color={Colors.neonPurple} />
-                  </View>
-                  <View style={[styles.bubble, styles.userBubble, styles.interimBubble]}>
-                    <WordByWord text={interimTranscript} isInterim />
-                  </View>
-                </View>
-              ) : null}
-            </ScrollView>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <LiveVisualizer isActive={isVoiceRecording || isSpeaking} theme={status.theme} />
-              
-              <View style={styles.micContainer}>
-                {isVoiceRecording && (
-                  <View style={styles.micAura} />
-                )}
-                <TouchableOpacity 
-                  onPress={onToggleRecording}
-                  style={[
-                    styles.micButton, 
-                    isVoiceRecording ? styles.micButtonActive : styles.micButtonInactive
-                  ]}
-                >
-                  {voiceLoading ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Ionicons 
-                      name={isVoiceRecording ? "mic-off" : "mic"} 
-                      size={32} 
-                      color="#FFF" 
-                    />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.statusLabel, { color: status.color }]}>
-                {isVoiceRecording ? "PROTOCOL: LISTENING" : isSpeaking ? "COMMUNICATION: ACTIVE" : "STANDBY: ONLINE"}
+            <View>
+              <Text style={styles.headerTitleText}>TALK TO JARVIS</Text>
+              <Text style={styles.headerStatusText}>
+                {isVoiceRecording ? "LISTENING..." : isSpeaking ? "SPEAKING..." : voiceLoading ? "CONNECTING..." : "STANDBY MODE"}
               </Text>
             </View>
-          </Animated.View>
+          </View>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Ionicons name="close" size={26} color="rgba(255,255,255,0.4)" />
+          </TouchableOpacity>
         </View>
-      </BlurView>
+
+        {/* Center UI */}
+        <View style={styles.centerArea}>
+          <Animated.View style={[styles.mainOrbWrapper, { transform: [{ scale: pulseAnim }] }]}>
+            {/* Diamond shape container */}
+            <View style={styles.diamondOuter}>
+              <View style={styles.diamondInner}>
+                <View style={styles.diamondCore}>
+                  <MaterialCommunityIcons name="robot" size={38} color={Colors.neonBlue} />
+                </View>
+              </View>
+            </View>
+            
+            <Animated.View style={[styles.orbitingDiamond, { opacity: Animated.multiply(glowAnim, 0.2) }]} />
+            <Animated.View style={[styles.orbitingDiamondSmall, { opacity: Animated.multiply(glowAnim, 0.4) }]} />
+          </Animated.View>
+
+          <Text style={styles.stableLinkText}>STABLE CONNECTION</Text>
+
+          <View style={styles.transcriptWrap}>
+            <Text style={styles.transcriptText} numberOfLines={3}>
+              {displayTranscript}
+            </Text>
+          </View>
+        </View>
+
+        {/* Bottom UI */}
+        <View style={styles.bottomArea}>
+          <Text style={styles.bottomInstruction}>TALK TO JARVIS</Text>
+          
+          <View style={styles.micStage}>
+            <Animated.View style={[
+              styles.micRipple, 
+              { 
+                transform: [{ scale: pulseAnim }],
+                opacity: isVoiceRecording ? 0.15 : 0 
+              }
+            ]} />
+            <TouchableOpacity 
+              onPress={onToggleRecording}
+              style={[styles.micBtn, isVoiceRecording && styles.micBtnActive]}
+            >
+              {voiceLoading ? (
+                <ActivityIndicator color="#FFF" size="large" />
+              ) : (
+                <View style={styles.micInnerGlow}>
+                  <MaterialCommunityIcons 
+                    name={isVoiceRecording ? "microphone-off" : "microphone"} 
+                    size={40} 
+                    color="#FFF" 
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.synapticBranding}>Multi-language synaptic processing enabled</Text>
+        </View>
+      </View>
     </Animated.View>
   );
 }
@@ -270,236 +213,213 @@ export default function VoiceModal({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#020617',
     zIndex: 9999,
   },
-  modalContainer: {
+  safeContent: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#0F172A',
-    borderRadius: 40,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-    shadowColor: Colors.neonBlue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 30,
-    elevation: 10,
+    paddingTop: Platform.OS === 'ios' ? 100 : 80,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 25,
+    marginBottom: 20,
   },
-  headerInfo: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 15,
   },
-  botIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  botIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0, 229, 255, 0.2)',
+    borderColor: 'rgba(0, 210, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 229, 255, 0.05)',
+    backgroundColor: 'rgba(0, 210, 255, 0.05)',
   },
-  statusDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: '#0F172A',
-  },
-  headerTitle: {
+  headerTitleText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '900',
-    letterSpacing: 2,
     fontStyle: 'italic',
-  },
-  headerStatus: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 10,
-    textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  headerStatusText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 2,
     marginTop: 2,
   },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 5,
   },
-  messageFeed: {
+  perspectiveContainer: {
+    position: 'absolute',
+    top: '15%',
+    width: '100%',
+    height: 250,
+    alignItems: 'center',
+  },
+  horizontalLine: {
+    position: 'absolute',
+    width: '150%',
+    height: 1,
+    backgroundColor: Colors.neonBlue,
+  },
+  slantedLine: {
+    position: 'absolute',
+    height: 400,
+    width: 0.5,
+    backgroundColor: Colors.neonBlue,
+    opacity: 0.1,
+  },
+  bgDot: {
+    position: 'absolute',
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: Colors.neonBlue,
+  },
+  centerArea: {
     flex: 1,
-  },
-  messageFeedContent: {
-    padding: 24,
-    gap: 24,
-  },
-  emptyState: {
-    flex: 1,
-    height: 300,
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.5,
   },
-  emptyStateText: {
-    color: 'rgba(255,255,255,0.2)',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginTop: 20,
-  },
-  messageGroup: {
-    flexDirection: 'row',
-    gap: 12,
-    maxWidth: '85%',
-  },
-  userGroup: {
-    alignSelf: 'flex-end',
-    flexDirection: 'row-reverse',
-  },
-  assistantGroup: {
-    alignSelf: 'flex-start',
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  mainOrbWrapper: {
+    width: 160,
+    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    marginTop: 4,
+    marginBottom: 40,
   },
-  userAvatar: {
-    backgroundColor: 'rgba(157, 80, 187, 0.1)',
-    borderColor: 'rgba(157, 80, 187, 0.2)',
-  },
-  assistantAvatar: {
-    backgroundColor: 'rgba(0, 229, 255, 0.1)',
-    borderColor: 'rgba(0, 229, 255, 0.2)',
-  },
-  bubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  userBubble: {
-    backgroundColor: 'rgba(157, 80, 187, 0.15)',
-    borderColor: 'rgba(157, 80, 187, 0.2)',
-    borderTopRightRadius: 4,
-  },
-  assistantBubble: {
-    backgroundColor: 'rgba(0, 229, 255, 0.08)',
-    borderColor: 'rgba(0, 229, 255, 0.2)',
-    borderTopLeftRadius: 4,
-  },
-  interimBubble: {
-    opacity: 0.7,
-    fontStyle: 'italic',
-  },
-  messageText: {
-    color: '#F1F5F9',
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  interimText: {
-    color: 'rgba(255,255,255,0.6)',
-  },
-  cursor: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  providerBadge: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  providerText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 9,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  footer: {
-    padding: 32,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-  },
-  visualizerContainer: {
-    flexDirection: 'row',
+  diamondOuter: {
+    width: 100,
+    height: 100,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 210, 255, 0.4)',
+    transform: [{ rotate: '45deg' }],
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    height: 40,
-    marginBottom: 24,
+    backgroundColor: 'rgba(0, 210, 255, 0.05)',
+    zIndex: 5,
   },
-  visualizerBar: {
-    width: 3,
-    borderRadius: 1.5,
-  },
-  micContainer: {
+  diamondInner: {
     width: 80,
     height: 80,
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 210, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
   },
-  micAura: {
+  diamondCore: {
+    width: 70,
+    height: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-45deg' }], // Counter-rotate icon
+  },
+  orbitingDiamond: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderWidth: 1,
+    borderColor: Colors.neonBlue,
+    transform: [{ rotate: '45deg' }],
+  },
+  orbitingDiamondSmall: {
     position: 'absolute',
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: '#EF4444',
-    opacity: 0.2,
+    borderWidth: 0.5,
+    borderColor: Colors.neonBlue,
+    transform: [{ rotate: '45deg' }],
   },
-  micButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
-  micButtonActive: {
-    backgroundColor: '#EF4444',
-  },
-  micButtonInactive: {
-    backgroundColor: Colors.neonBlue,
-  },
-  statusLabel: {
-    fontSize: 10,
+  stableLinkText: {
+    color: Colors.neonBlue,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 4,
-    textTransform: 'uppercase',
+    fontStyle: 'italic',
+    opacity: 0.9,
+    marginTop: 10,
+  },
+  transcriptWrap: {
+    marginTop: 40,
+    paddingHorizontal: 40,
+    height: 120,
+    justifyContent: 'center',
+  },
+  transcriptText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 17,
+    textAlign: 'center',
+    lineHeight: 26,
+    fontWeight: '500',
+  },
+  bottomArea: {
+    paddingBottom: Platform.OS === 'ios' ? 70 : 40,
+    alignItems: 'center',
+  },
+  bottomInstruction: {
+    color: Colors.neonBlue,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 3,
+    marginBottom: 25,
+  },
+  micStage: {
+    width: 150,
+    height: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  micRipple: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: Colors.neonBlue,
+  },
+  micBtn: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.neonBlue,
+    shadowRadius: 20,
+    shadowOpacity: 0.6,
+    elevation: 20,
+    zIndex: 10,
+  },
+  micBtnActive: {
+    backgroundColor: Colors.neonBlue,
+    shadowRadius: 30,
+    shadowColor: '#FFF',
+  },
+  micInnerGlow: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FFF',
+    shadowRadius: 10,
+    shadowOpacity: 0.2,
+  },
+  synapticBranding: {
+    color: 'rgba(255, 255, 255, 0.2)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });

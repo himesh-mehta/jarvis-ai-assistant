@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
   TextInput, ActivityIndicator, useWindowDimensions, Linking,
   Platform
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -11,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../hooks/auth';
 import { API_URL } from '../../constants/config';
+import Sidebar from '../../components/Sidebar';
 
 
 const APP_URLS: Record<string, string> = {
@@ -32,6 +34,7 @@ const QUICK_APPS = [
 ];
 
 export default function CoreScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -43,6 +46,36 @@ export default function CoreScreen() {
   const [agentTask, setAgentTask] = useState('');
   const [agentRunning, setAgentRunning] = useState(false);
   const [agentSteps, setAgentSteps] = useState<string[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) syncHistory();
+  }, [user]);
+
+  const syncHistory = async () => {
+    if (!user) return;
+    setIsHistoryLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`${API_URL}/api/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.sessions) {
+        setChatHistory(data.sessions.map((s: any) => ({
+          ...s,
+          id: s.sessionId || s.id,
+          title: s.title || 'Untitled Session'
+        })));
+      }
+    } catch (e) {
+      console.log("[Core Sync Error]", e);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
 
   // Check health on mount
   useEffect(() => {
@@ -54,9 +87,10 @@ export default function CoreScreen() {
   const checkHealth = async () => {
     try {
       const res = await fetch(`${API_URL}/api/android`);
+      if (!res.ok) throw new Error("Health check failed");
       const data = await res.json();
-      setIsOnline(data.online);
-      if (data.battery) setBattery(data.battery);
+      setIsOnline(!!data.online);
+      if (typeof data.battery === 'number') setBattery(data.battery);
     } catch (e) {
       setIsOnline(false);
     }
@@ -127,8 +161,11 @@ export default function CoreScreen() {
   return (
     <View style={styles.container}>
       {/* Ported Device Status Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 75) }]}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={styles.menuBtn}>
+            <Ionicons name="menu-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
           <View style={styles.deviceInfo}>
             <Ionicons name="phone-portrait" size={18} color={Colors.jarvisNeon} />
             <Text style={styles.headerTitle}>ANDROID CONTROL</Text>
@@ -316,6 +353,23 @@ export default function CoreScreen() {
           </View>
         )}
       </ScrollView>
+
+      <Sidebar 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeSessionId=""
+        onNewChat={() => router.push({ pathname: '/(tabs)/chat', params: { new: 'true' } })}
+        onSelectChat={(id, title) => {
+          router.push({ pathname: '/(tabs)/chat', params: { sessionId: id, title: title } });
+          setIsSidebarOpen(false);
+        }}
+        recentChats={chatHistory}
+        isHistoryLoading={isHistoryLoading}
+        onVoicePress={() => {
+          router.push({ pathname: '/(tabs)/chat', params: { voice: 'true' } });
+          setIsSidebarOpen(false);
+        }}
+      />
     </View>
   );
 }
@@ -326,7 +380,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingHorizontal: 20,
     backgroundColor: 'rgba(2, 6, 23, 0.8)',
     borderBottomWidth: 1,
@@ -335,9 +389,12 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
+    gap: 15,
+  },
+  menuBtn: {
+    padding: 4,
   },
   deviceInfo: {
     flexDirection: 'row',
