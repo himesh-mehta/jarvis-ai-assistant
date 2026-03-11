@@ -1,0 +1,29 @@
+
+> antigravity-ai@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/app/api/browser/route.ts:3:1
+Module not found: Can't resolve 'ws'
+[0m [90m 1 |[39m [36mimport[39m { [33mNextRequest[39m } [36mfrom[39m [32m'next/server'[39m[33m;[39m
+ [90m 2 |[39m [36mimport[39m admin [36mfrom[39m [32m'@/lib/firebase-admin'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m [33mWebSocket[39m [36mfrom[39m [32m'ws'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 4 |[39m
+ [90m 5 |[39m [36mconst[39m [33mGROQ_API_KEY[39m [33m=[39m process[33m.[39menv[33m.[39m[33mGROQ_API_KEY[39m[33m;[39m
+ [90m 6 |[39m [36mconst[39m [33mWS_SERVER_URL[39m [33m=[39m process[33m.[39menv[33m.[39m[33mWS_SERVER_URL[39m [33m||[39m [32m'wss://jarvis-ws-server-production.up.railway.app'[39m[33m;[39m[0m
+
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./src/app/api/browser/route.ts:3:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
