@@ -1,0 +1,12 @@
+{
+  "name": "jarvis-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix Jarvis",
+    "build": "npm run build --prefix Jarvis",
+    "start": "npm run start --prefix Jarvis",
+    "lint": "npm run lint --prefix Jarvis",
+    "mobile": "npm start --prefix jarvis-mobile"
+  }
+}

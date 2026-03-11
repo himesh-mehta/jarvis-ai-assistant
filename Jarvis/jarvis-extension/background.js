@@ -1,136 +1,139 @@
-// Background service worker — listens for commands from JARVIS
+let socket = null;
+let reconnectInterval = 5000;
+let config = {
+    url: 'wss://jarvis-ws-server-production.up.railway.app', // Placeholder, user will update via popup
+    token: 'your-secret-token'
+};
 
-let taskQueue = [];
-let isExecuting = false;
+// Initialize config from storage
+chrome.storage.local.get(['wsUrl', 'wsToken'], (result) => {
+    if (result.wsUrl) config.url = result.wsUrl;
+    if (result.wsToken) config.token = result.wsToken;
+    connect();
+});
 
-// Listen for messages from JARVIS website
-chrome.runtime.onMessageExternal.addListener(async (message, sender, sendResponse) => {
-    if (message.type === "JARVIS_COMMAND") {
-        console.log("[JARVIS] Received command:", message.command);
-        taskQueue.push(message);
-        if (!isExecuting) {
-            executeNext();
+function connect() {
+    console.log(`Connecting to ${config.url}...`);
+    socket = new WebSocket(config.url);
+
+    socket.onopen = () => {
+        console.log('Connected to WebSocket server');
+        socket.send(JSON.stringify({
+            type: 'register',
+            role: 'extension',
+            id: 'default',
+            token: config.token
+        }));
+        updatePopupStatus('connected');
+    };
+
+    socket.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received message:', data);
+
+        if (data.type === 'command') {
+            const result = await executeCommand(data.payload);
+            socket.send(JSON.stringify({
+                type: 'result',
+                targetId: 'default',
+                requestId: data.requestId,
+                payload: result,
+                token: config.token
+            }));
         }
-        sendResponse({ status: "received" });
-    }
-    return true;
-});
+    };
 
-// Listen for messages from content script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === "TASK_DONE") {
-        console.log("[JARVIS] Task done:", message.result);
-        notifyJARVIS(message.result);
-        isExecuting = false;
-        executeNext();
-    }
-    return true;
-});
+    socket.onclose = () => {
+        console.log('Disconnected. Reconnecting...');
+        updatePopupStatus('disconnected');
+        setTimeout(connect, reconnectInterval);
+    };
 
-async function executeNext() {
-    if (taskQueue.length === 0) return;
-    isExecuting = true;
-    const task = taskQueue.shift();
-    await executeTask(task);
+    socket.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        socket.close();
+    };
 }
 
-async function executeTask(task) {
-    const steps = task.steps;
-
-    for (const step of steps) {
-        await executeStep(step);
-        await sleep(2000); // wait between steps
-    }
+function updatePopupStatus(status) {
+    chrome.storage.local.set({ connectionStatus: status });
+    chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', status });
 }
 
-async function executeStep(step) {
-    switch (step.action) {
-        case "open_url":
-            const tab = await chrome.tabs.create({ url: step.url });
-            await waitForTab(tab.id);
-            break;
+async function executeCommand(command) {
+    console.log('Executing action:', command.action);
+    
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        switch (command.action) {
+            case 'navigate':
+                await chrome.tabs.update(tab.id, { url: command.url });
+                return await waitForComplete(tab.id);
 
-        case "type_text":
-            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            await chrome.scripting.executeScript({
-                target: { tabId: activeTab.id },
-                func: typeInElement,
-                args: [step.selector, step.text]
-            });
-            break;
+            case 'click':
+            case 'type':
+            case 'scroll':
+            case 'extract':
+                return await sendMessageToTab(tab.id, command);
 
-        case "click":
-            const [tab2] = await chrome.tabs.query({ active: true, currentWindow: true });
-            await chrome.scripting.executeScript({
-                target: { tabId: tab2.id },
-                func: clickElement,
-                args: [step.selector]
-            });
-            break;
+            case 'screenshot':
+                return await captureScreenshot();
 
-        case "wait":
-            await sleep(step.duration || 3000);
-            break;
+            case 'wait':
+                await new Promise(r => setTimeout(r, command.ms || 1000));
+                return { status: 'success', message: `Waited for ${command.ms}ms` };
 
-        case "copy_text":
-            const [tab3] = await chrome.tabs.query({ active: true, currentWindow: true });
-            const result = await chrome.scripting.executeScript({
-                target: { tabId: tab3.id },
-                func: copyText,
-                args: [step.selector]
-            });
-            // Store copied text for next step
-            await chrome.storage.local.set({ copiedText: result[0].result });
-            break;
+            default:
+                return { status: 'error', message: `Unknown action: ${command.action}` };
+        }
+    } catch (err) {
+        return { status: 'error', message: err.message };
     }
 }
 
-// Injected functions
-function typeInElement(selector, text) {
-    const el = document.querySelector(selector);
-    if (el) {
-        el.focus();
-        el.value = text;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-    }
-    return false;
-}
-
-function clickElement(selector) {
-    const el = document.querySelector(selector);
-    if (el) { el.click(); return true; }
-    return false;
-}
-
-function copyText(selector) {
-    const el = document.querySelector(selector);
-    if (el) return el.innerText || el.value;
-    return document.body.innerText.slice(0, 5000);
-}
-
-function waitForTab(tabId) {
-    return new Promise(resolve => {
-        chrome.tabs.onUpdated.addListener(function listener(id, info) {
+async function waitForComplete(tabId) {
+    return new Promise((resolve) => {
+        const listener = (id, info) => {
             if (id === tabId && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(listener);
-                setTimeout(resolve, 1500);
+                resolve({ status: 'success', message: 'Navigation complete' });
+            }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+        // Timeout
+        setTimeout(() => {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve({ status: 'success', message: 'Navigation timed out but continuing' });
+        }, 15000);
+    });
+}
+
+async function sendMessageToTab(tabId, message) {
+    return new Promise((resolve) => {
+        chrome.tabs.sendMessage(tabId, message, (response) => {
+            if (chrome.runtime.lastError) {
+                resolve({ status: 'error', message: chrome.runtime.lastError.message });
+            } else {
+                resolve(response);
             }
         });
     });
 }
 
-function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
-}
-
-function notifyJARVIS(result) {
-    // Send result back to JARVIS website
-    chrome.storage.local.set({
-        jarvisResult: {
-            result,
-            timestamp: Date.now()
-        }
+async function captureScreenshot() {
+    return new Promise((resolve) => {
+        chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+            resolve({ status: 'success', screenshot: dataUrl });
+        });
     });
 }
+
+// Listen for config updates from popup
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'UPDATE_CONFIG') {
+        config.url = message.url;
+        config.token = message.token;
+        if (socket) socket.close(); // Force reconnect
+    }
+});

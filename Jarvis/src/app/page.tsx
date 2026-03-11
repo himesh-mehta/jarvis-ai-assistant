@@ -261,8 +261,85 @@ export default function Home() {
     if (!user) { setIsAuthOpen(true); return; }
 
     const parsed = parseCommand(content);
-    if (parsed.isCommand && parsed.command !== 'agent_task') {
+    if (parsed.isCommand && (parsed.command === 'browser_task' || (parsed.isCommand && parsed.command !== 'agent_task'))) {
       const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      if (parsed.command === 'browser_task') {
+        setMessages(prev => [
+          ...prev,
+          { id: Date.now().toString(), role: 'user' as const, content, timestamp: timestampStr },
+          { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '🌐 Executing in browser...', timestamp: timestampStr },
+        ]);
+        setIsLoading(true);
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/browser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ command: content }),
+          });
+
+          if (!res.ok) throw new Error('Browser API failed');
+          
+          const reader = res.body!.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = '';
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            accumulated += decoder.decode(value, { stream: true });
+            const lines = accumulated.split('\n');
+            accumulated = lines.pop() || '';
+            
+            for (const line of lines) {
+              if (!line.trim() || !line.startsWith('data:')) continue;
+              const data = line.replace('data: ', '').trim();
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsedResult = JSON.parse(data);
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  
+                  if (parsedResult.status === 'success' || parsedResult.status === 'started') {
+                    // Update content with progress or keep it as is
+                    const msg = parsedResult.message || `Step: ${parsedResult.action || 'processing'}...`;
+                    updated[updated.length - 1] = { ...last, content: `🌐 ${msg}` };
+                  }
+                  
+                  if (parsedResult.screenshot) {
+                    updated[updated.length - 1] = { 
+                      ...last, 
+                      content: '✅ Browser task complete.', 
+                      imageUrl: parsedResult.screenshot 
+                    };
+                  }
+
+                  if (parsedResult.error) {
+                    updated[updated.length - 1] = { ...last, content: `❌ ${parsedResult.error}` };
+                  }
+                  
+                  return updated;
+                });
+              } catch (e) {}
+            }
+          }
+        } catch (err: any) {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: `❌ Browser error: ${err.message}` };
+            return updated;
+          });
+        } finally {
+          setIsLoading(false);
+          syncHistory();
+        }
+        return;
+      }
+
+      // Existing Android command logic
       setMessages(prev => [
         ...prev,
         { id: Date.now().toString(), role: 'user' as const, content, timestamp: timestampStr },

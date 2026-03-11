@@ -110,6 +110,14 @@ export function parseCommand(message: string): ParsedCommand {
   if (/battery|charge/i.test(msg))
     return { command: 'battery_info', params: {}, isCommand: true };
 
+  // ── Browser Automation detection ───────────────────
+  const isBrowserTask = /open\s+.+\s+and\s+(?:do|click|type|generate|search|find)|go\s+to\s+.+\s+and\s+(?:click|type|search)|automate\s+.+|generate\s+.+\s+on\s+lovable|search\s+.+\s+on\s+google/i.test(msg);
+  if (isBrowserTask) return {
+    command:   'browser_task',
+    params:    { task: message },
+    isCommand: true,
+  };
+
   // ── Multi-step detection ──────────────────────────
   const isMultiStep = /and then|after that|then |first |finally|generate.*and|open.*and/i.test(msg);
   if (isMultiStep) return {
