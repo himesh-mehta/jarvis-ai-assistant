@@ -36,19 +36,23 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { AuthProvider } from '../hooks/auth';
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthGuard>
-        <View style={{ flex: 1, backgroundColor: '#020617' }}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-          <StatusBar style="light" />
-        </View>
-      </AuthGuard>
+      <AuthProvider>
+        <AuthGuard>
+          <View style={{ flex: 1, backgroundColor: '#020617' }}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+            <StatusBar style="light" />
+          </View>
+        </AuthGuard>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
