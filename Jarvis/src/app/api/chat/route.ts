@@ -379,11 +379,12 @@ ${pdfContext ? `PDF DOCUMENTS: You have been provided relevant content from the 
                 }
 
                 connectDB().then(() => {
+                    const cleanUserMessage = message.replace(/\[Reply strictly in .+ only\]\s*/i, '').trim();
                     Chat.findOneAndUpdate(
                         { sessionId, userId: uid },
                         {
                             $set: { userEmail: email },
-                            $setOnInsert: { title: message.slice(0, 50) },
+                            $setOnInsert: { title: cleanUserMessage.slice(0, 50) || 'New Chat' },
                             $push: {
                                 messages: {
                                     $each: [

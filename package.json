@@ -2,11 +2,22 @@
   "name": "jarvis-root",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "Jarvis",
+    "jarvis-mobile",
+    "jarvis-ws-server"
+  ],
   "scripts": {
     "dev": "npm run dev --prefix Jarvis",
     "build": "npm run build --prefix Jarvis",
     "start": "npm run start --prefix Jarvis",
     "lint": "npm run lint --prefix Jarvis",
-    "mobile": "npm start --prefix jarvis-mobile"
+    "mobile": "npm start --prefix jarvis-mobile",
+    "ws": "node jarvis-ws-server/server.js"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-is": "^19.2.4"
   }
 }

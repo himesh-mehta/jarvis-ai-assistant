@@ -37,7 +37,7 @@ const PROVIDER_ICONS: Record<string, string> = {
 // ── Word by Word Animation ────────────────────────────────
 const WordByWord = ({ text, isInterim }: { text: string; isInterim?: boolean }) => {
     const words = useMemo(() => text.split(" "), [text]);
-    
+
     return (
         <span className={cn("inline-block", isInterim && "opacity-60")}>
             {words.map((word, i) => (
@@ -82,12 +82,12 @@ const LiveVisualizer = ({ isActive, colorTheme = "blue" }: { isActive: boolean; 
                 const audioCtx = new AudioContextClass();
                 const analyser = audioCtx.createAnalyser();
                 const source = audioCtx.createMediaStreamSource(stream);
-                
+
                 source.connect(analyser);
                 analyser.fftSize = 64;
                 const bufferLength = analyser.frequencyBinCount;
                 const dataArray = new Uint8Array(bufferLength);
-                
+
                 audioContextRef.current = audioCtx;
                 analyzerRef.current = analyser;
                 dataArrayRef.current = dataArray;
@@ -95,17 +95,17 @@ const LiveVisualizer = ({ isActive, colorTheme = "blue" }: { isActive: boolean; 
                 const update = () => {
                     if (!analyzerRef.current || !dataArrayRef.current) return;
                     analyzerRef.current.getByteFrequencyData(dataArrayRef.current as any);
-                    
+
                     // Map frequency data to 24 bars
                     const newAmps = Array.from({ length: 24 }).map((_, i) => {
                         const val = dataArrayRef.current![i % bufferLength];
                         return Math.max(4, (val / 255) * 32);
                     });
-                    
+
                     setAmplitudes(newAmps);
                     animationRef.current = requestAnimationFrame(update);
                 };
-                
+
                 update();
             } catch (err) {
                 console.error("Audio visualization failed", err);
@@ -204,7 +204,7 @@ export const VoiceModal = ({
                     >
                         {/* Futuristic Grid Overlay */}
                         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-40" />
-                        
+
                         {/* Header */}
                         <div className="relative px-8 py-6 flex items-center justify-between border-b border-white/5 bg-white/[0.03] backdrop-blur-xl">
                             <div className="flex items-center gap-4">
@@ -246,8 +246,8 @@ export const VoiceModal = ({
                             className="flex-1 overflow-y-auto px-8 py-10 space-y-10 scroll-smooth no-scrollbar"
                         >
                             {voiceMessages.length === 0 && !interimTranscript && (
-                                <motion.div 
-                                    initial={{ opacity: 0 }} 
+                                <motion.div
+                                    initial={{ opacity: 0 }}
                                     animate={{ opacity: 0.15 }}
                                     className="h-full flex flex-col items-center justify-center text-center italic"
                                 >
@@ -274,12 +274,17 @@ export const VoiceModal = ({
                                     </div>
                                     <div className={cn("flex flex-col gap-2.5 max-w-[85%]", msg.role === "user" ? "items-end" : "items-start")}>
                                         <div className={cn(
-                                            "px-5 py-3.5 rounded-[1.5rem] text-[15px] font-medium leading-relaxed shadow-2xl transition-all duration-500 backdrop-blur-md",
+                                            "px-5 py-3.5 rounded-[1.5rem] text-[15px] font-medium leading-relaxed shadow-2xl transition-all duration-500 backdrop-blur-md flex flex-col gap-1",
                                             msg.role === "user"
                                                 ? "bg-gradient-to-br from-indigo-600/30 to-purple-700/30 border border-purple-500/20 rounded-tr-none text-purple-50"
                                                 : "bg-gradient-to-br from-cyan-600/20 to-blue-700/20 border border-cyan-500/20 rounded-tl-none text-cyan-50"
                                         )}>
-                                            <WordByWord text={msg.content} />
+                                            {msg.content.includes('[Reply strictly in ') && (
+                                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase w-fit border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)] mb-1">
+                                                    <Mic className="w-2.5 h-2.5" /> Voice
+                                                </span>
+                                            )}
+                                            <WordByWord text={msg.content.replace(/\[Reply strictly in .+? only\]\s*/i, '')} />
                                         </div>
                                         {msg.provider && (
                                             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 shadow-sm">
@@ -353,7 +358,7 @@ export const VoiceModal = ({
                                         <Mic size={32} className="text-white" />
                                     )}
                                 </motion.button>
-                                
+
                                 {/* Background Aura */}
                                 <div className={cn(
                                     "absolute inset-0 blur-3xl rounded-full opacity-30 transition-all duration-1000",
@@ -362,7 +367,7 @@ export const VoiceModal = ({
                             </div>
 
                             <div className="flex flex-col items-center gap-2">
-                                <motion.p 
+                                <motion.p
                                     animate={isVoiceRecording ? { scale: [1, 1.05, 1], opacity: [0.6, 1, 0.6] } : {}}
                                     transition={{ repeat: Infinity, duration: 2 }}
                                     className={cn(

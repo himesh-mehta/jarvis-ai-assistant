@@ -157,7 +157,7 @@ export const Sidebar = React.memo(({
     }, [voiceOpen]);
 
     const summarizeTitle = useCallback((text: string) => {
-        const clean = text.replace(/\[.*?\]\s*/g, '').trim();
+        const clean = text.replace(/\[Reply strictly in .+? only\]\s*/i, '').replace(/\[.*?\]\s*/g, '').trim();
         const words = clean.split(/\s+/);
         if (words.length > 3) {
             return words.slice(0, 3).join(' ') + '...';
@@ -620,7 +620,10 @@ export const Sidebar = React.memo(({
                                                         className="flex-1 min-w-0 flex items-center gap-2"
                                                     >
                                                         {chat.pinned && <Pin className="w-3 h-3 text-neon-blue rotate-45 fill-neon-blue shrink-0" />}
-                                                        <span className="truncate max-w-[105px] text-white/50 group-hover:text-white transition-colors">{chat.title}</span>
+                                                        <span className="truncate max-w-[105px] text-white/50 group-hover:text-white transition-colors flex items-center gap-1.5">
+                                                            {chat.title.includes('[Reply strictly in ') && <Mic className="w-3 h-3 text-blue-400 shrink-0" />}
+                                                            {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}
+                                                        </span>
                                                     </div>
                                                     <div className="flex shrink-0 items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300">
                                                         <DropdownMenu>
@@ -848,7 +851,16 @@ export const Sidebar = React.memo(({
                                                     ? "bg-blue-600/20 text-blue-100 border border-blue-500/20 rounded-tr-none shadow-[0_0_20px_rgba(59,130,246,0.1)]"
                                                     : "bg-white/5 text-gray-200 rounded-tl-none border border-white/5"
                                             )}>
-                                                {msg.content || (
+                                                {msg.content ? (
+                                                    msg.content.includes('[Reply strictly in ') ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase w-fit border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)] mb-1">
+                                                                <Mic className="w-2.5 h-2.5" /> Voice
+                                                            </span>
+                                                            <span>{msg.content.replace(/\[Reply strictly in .+? only\]\s*/i, '')}</span>
+                                                        </div>
+                                                    ) : msg.content
+                                                ) : (
                                                     <div className="flex gap-1 py-1">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce" style={{ animationDelay: '0s' }} />
                                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce" style={{ animationDelay: '0.2s' }} />
@@ -1011,10 +1023,11 @@ export const Sidebar = React.memo(({
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2">
                                                                 <h3 className={cn(
-                                                                    "font-semibold text-sm sm:text-base transition-all truncate max-w-[150px] sm:max-w-[300px]",
+                                                                    "font-semibold text-sm sm:text-base transition-all truncate max-w-[150px] sm:max-w-[300px] flex items-center gap-2",
                                                                     isActive ? "text-white text-shadow-neon" : "text-jarvis-text group-hover:text-white"
                                                                 )}>
-                                                                    {chat.title}
+                                                                    {chat.title.includes('[Reply strictly in ') && <Mic className="w-3 h-3 text-blue-400 shrink-0" />}
+                                                                    {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}
                                                                 </h3>
                                                                 {chat.pinned && (
                                                                     <Pin className="w-3.5 h-3.5 text-jarvis-neon fill-jarvis-neon/20 animate-pulse" />

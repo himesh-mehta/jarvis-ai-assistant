@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { Mic } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 // ── Message Interface ─────────────────────────────────────
@@ -389,6 +390,26 @@ const MessageItem = ({ message }: { message: Message }) => {
                                             {children}
                                         </code>
                                     );
+                                },
+                                p: ({ children }) => {
+                                    if (typeof children === 'string' && children.includes('[Reply strictly in ')) {
+                                        const parts = children.split(/(\[Reply strictly in .+? only\])/g);
+                                        return (
+                                            <p>
+                                                {parts.map((part, i) => {
+                                                    if (part.startsWith('[Reply strictly in ')) {
+                                                        return (
+                                                            <span key={i} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase mr-1 align-middle border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                                                                <Mic className="w-2.5 h-2.5" /> Voice
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return part;
+                                                })}
+                                            </p>
+                                        );
+                                    }
+                                    return <p>{children}</p>;
                                 },
                                 table: ({ node, ...props }) => (
                                     <div className="overflow-x-auto my-4 rounded-lg border border-white/10">
