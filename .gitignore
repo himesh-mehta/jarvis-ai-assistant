@@ -1,2 +1,21 @@
-node_modules
-node_modules
+# dependencies
+node_modules/
+.venv/
+venv/
+env/
+
+# env files
+.env
+.env.*
+
+# logs
+*.log
+build_errors.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
