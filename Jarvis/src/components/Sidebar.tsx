@@ -28,8 +28,7 @@ import {
     Clock as ClockIcon,
     ChevronRight,
     Search,
-    Activity,
-    Smartphone
+    Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,8 +68,6 @@ interface SidebarProps {
     userPrompts?: any[];
     currentChatId?: string;
     onSyncHistory?: () => void;
-    openAndroid: () => void;
-    openAgent?: () => void;
 }
 
 interface VoiceMessage {
@@ -114,8 +111,6 @@ export const Sidebar = React.memo(({
     currentChatId,
     onMobileClose,
     onSyncHistory,
-    openAndroid,
-    openAgent,
 }: SidebarProps) => {
     const router = useRouter();
     const { logout } = useAuth();
@@ -222,7 +217,6 @@ export const Sidebar = React.memo(({
         { id: "new", icon: <Plus className="w-4.5 h-4.5" />, label: "New chat" },
         { id: "Chats", icon: <MessageCircle className="w-4.5 h-4.5" />, label: "Chats" },
         { id: "voice", icon: <Mic className="w-4.5 h-4.5" />, label: "Talk to Jarvis" },
-        { id: "command", icon: <Bot className="w-4.5 h-4.5" />, label: "Command to Jarvis" },
         { id: "projects", icon: <Library className="w-4.5 h-4.5" />, label: "Projects" },
     ];
 
@@ -468,10 +462,6 @@ export const Sidebar = React.memo(({
                                             }
                                             if (item.id === "Chats") {
                                                 setIsHistoryOpen(true);
-                                                return;
-                                            }
-                                            if (item.id === "command") {
-                                                openAgent?.();
                                                 return;
                                             }
                                             if (item.id === "new") onNewChat();
