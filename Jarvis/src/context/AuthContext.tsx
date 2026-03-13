@@ -9,6 +9,8 @@ import {
   updateProfile,
   signInWithRedirect,
   getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
   User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -16,7 +18,7 @@ import { auth, googleProvider } from '@/lib/firebase';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => Promise<any>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   updateUserProfile: (displayName: string) => Promise<void>;
@@ -30,26 +32,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
+    let isMounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        // Force local persistence to ensure login sticks on mobile
+        await setPersistence(auth, browserLocalPersistence);
+        
+        // Handle redirect result for mobile logins
+        const result = await getRedirectResult(auth);
+        if (result?.user && isMounted) {
+          setUser(result.user);
+        }
+      } catch (err) {
+        console.error("Auth initialization/redirect error:", err);
+      }
 
-    // Check for redirect result on mount
-    getRedirectResult(auth).catch(err => {
-      console.error("Redirect login error:", err);
-    });
+      // Listen for all auth state changes
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (isMounted) {
+          setUser(u);
+          setLoading(false);
+        }
+      });
 
-    return () => unsub();
+      return unsub;
+    };
+
+    const cleanupPromise = initializeAuth();
+
+    return () => {
+      isMounted = false;
+      cleanupPromise.then(unsub => unsub?.());
+    };
   }, []);
 
   const loginWithGoogle = async () => {
     // Better mobile support for Google login
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Some mobile browsers block popups or fail to return state to the opening window.
+    // Redirect is significantly more reliable on mobile devices.
+    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     if (isMobile) {
-      await signInWithRedirect(auth, googleProvider);
+      return await signInWithRedirect(auth, googleProvider);
     } else {
-      await signInWithPopup(auth, googleProvider);
+      try {
+        return await signInWithPopup(auth, googleProvider);
+      } catch (err: any) {
+        // Fallback for desktop browsers blocking popups
+        if (err.code === 'auth/popup-blocked') {
+          return await signInWithRedirect(auth, googleProvider);
+        }
+        throw err;
+      }
     }
   };
 

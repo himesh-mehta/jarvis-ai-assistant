@@ -223,6 +223,38 @@ async function fetchPDFContext(
     }
 }
 
+// ✅ Generate a short title for the chat
+async function generateTitle(message: string): Promise<string> {
+    try {
+        const cleanMessage = message.replace(/\[Reply strictly in .+ only\]\s*/i, '').trim();
+        const res = await fetch(PROVIDERS[0].url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${PROVIDERS[0].apiKey}`,
+            },
+            body: JSON.stringify({
+                model: PROVIDERS[0].model,
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: 'You are a chat title generator. Generate a very short (2-3 words), catchy, and descriptive title based on the user prompt. Return ONLY the title, no quotes or punctuation.' 
+                    },
+                    { role: 'user', content: cleanMessage }
+                ],
+                max_tokens: 10,
+                temperature: 0.7,
+            }),
+        });
+        const data = await res.json();
+        const title = data?.choices?.[0]?.message?.content?.replace(/["']/g, '').trim();
+        return title || cleanMessage.slice(0, 40);
+    } catch (err) {
+        console.error('[Title Gen Failed]', err);
+        return message.slice(0, 40);
+    }
+}
+
 export async function POST(req: NextRequest) {
 
     // ── Verify Firebase Token ────────────────────────────
@@ -370,6 +402,17 @@ ${pdfContext ? `PDF DOCUMENTS: You have been provided relevant content from the 
     const stream = new ReadableStream({
         async start(controller) {
             try {
+                // Pre-generate title if it's a new chat to have it ready for the stream
+                let chatTitle = '';
+                if (!history || history.length === 0) {
+                    try {
+                        const cleanUserMessage = message.replace(/\[Reply strictly in .+ only\]\s*/i, '').trim();
+                        chatTitle = await generateTitle(cleanUserMessage);
+                    } catch (e) {
+                        console.error("[Pre-Title Gen Error]", e);
+                    }
+                }
+
                 const words = best.content.split(/(\s+)/);
                 for (const word of words) {
                     controller.enqueue(
@@ -378,13 +421,18 @@ ${pdfContext ? `PDF DOCUMENTS: You have been provided relevant content from the 
                     await new Promise(r => setTimeout(r, 15));
                 }
 
-                connectDB().then(() => {
-                    const cleanUserMessage = message.replace(/\[Reply strictly in .+ only\]\s*/i, '').trim();
+                if (chatTitle) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ title: chatTitle })}\n\n`));
+                }
+
+                connectDB().then(async () => {
+                    const finalTitle = chatTitle || message.replace(/\[Reply strictly in .+ only\]\s*/i, '').trim().slice(0, 50);
+                    
                     Chat.findOneAndUpdate(
                         { sessionId, userId: uid },
                         {
                             $set: { userEmail: email },
-                            $setOnInsert: { title: cleanUserMessage.slice(0, 50) || 'New Chat' },
+                            $setOnInsert: { title: finalTitle || 'New Chat' },
                             $push: {
                                 messages: {
                                     $each: [

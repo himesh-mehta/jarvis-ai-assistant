@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Menu, PanelLeft, Plus, Terminal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
 import { InputPanel } from "@/components/InputPanel";
@@ -29,6 +30,7 @@ export default function Home() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [sessionId, setSessionId] = useState('');
   const [chatHistoryList, setChatHistoryList] = useState<{ id: string; title: string; pinned?: boolean }[]>([]);
 
@@ -109,13 +111,16 @@ export default function Home() {
 
   useEffect(() => {
     if (user) {
-      setSessionId('session-' + Math.random().toString(36).slice(2, 9));
-    } else {
+      // Only set a new session ID if one doesn't exist (to preserve chat during auth if possible)
+      if (!sessionId) {
+        setSessionId('session-' + Math.random().toString(36).slice(2, 9));
+      }
+    } else if (!authLoading) {
       setSessionId('');
       setMessages([]);
       setChatHistoryList([]);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user || authLoading) return;
@@ -129,8 +134,11 @@ export default function Home() {
       const res = await fetch('/api/history', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (data.sessions?.length > 0) {
+      if (res.status === 204) return;
+      const text = await res.text();
+      if (!text) return;
+      const data = JSON.parse(text);
+      if (data.sessions) {
         setChatHistoryList(
           data.sessions.map((s: any) => ({
             id: s.sessionId,
@@ -145,10 +153,11 @@ export default function Home() {
     }
   };
 
-  const handleSelectChat = async (id: string, title: string) => {
+   const handleSelectChat = async (id: string, title: string) => {
     if (!user) return;
     setSessionId(id);
-    setMessages([]);
+    setIsHistoryLoading(true);
+    // Don't clear messages immediately to avoid jarring empty state
     setIsMobileMenuOpen(false);
     try {
       const token = await user.getIdToken();
@@ -166,9 +175,14 @@ export default function Home() {
             }),
           }))
         );
+      } else {
+        setMessages([]);
       }
     } catch (e) {
       console.error('Load chat failed:', e);
+      setMessages([]);
+    } finally {
+      setIsHistoryLoading(false);
     }
   };
 
@@ -267,9 +281,8 @@ export default function Home() {
       setChatHistoryList(prev => {
         if (prev.some(c => c.id === sessionId)) return prev;
         const cleanTitle = content.replace(/\[.*?\]\s*/g, '').trim();
-        const words = cleanTitle.split(/\s+/);
-        const title = words.length > 3 ? words.slice(0, 3).join(' ') + '...' : (cleanTitle.slice(0, 20) + (cleanTitle.length > 20 ? '...' : '') || 'New Chat');
-        return [{ id: sessionId, title }, ...prev];
+        const displayTitle = cleanTitle.length > 35 ? cleanTitle.slice(0, 35) + '...' : cleanTitle;
+        return [{ id: sessionId, title: displayTitle || 'New Chat' }, ...prev];
       });
     }
 
@@ -298,7 +311,10 @@ export default function Home() {
         for (const line of lines) {
           if (!line.trim() || !line.startsWith('data:')) continue;
           const data = line.replace('data: ', '').trim();
-          if (data === '[DONE]') { syncHistory(); continue; }
+          if (!data || data === '[DONE]') {
+            if (data === '[DONE]') syncHistory();
+            continue;
+          }
           try {
             const parsed = JSON.parse(data);
             if (parsed.content) {
@@ -311,6 +327,11 @@ export default function Home() {
                 }
                 return updated;
               });
+            }
+            if (parsed.title) {
+              setChatHistoryList(prev => prev.map(c => 
+                c.id === sessionId ? { ...c, title: parsed.title } : c
+              ));
             }
           } catch (e) { }
         }
@@ -352,6 +373,7 @@ export default function Home() {
       });
     }
 
+    setIsLoading(true);
     try {
       const token = await user.getIdToken();
       formData.append('sessionId', sessionId);
@@ -372,7 +394,10 @@ export default function Home() {
         for (const line of lines) {
           if (!line.trim() || !line.startsWith('data:')) continue;
           const data = line.replace('data: ', '').trim();
-          if (data === '[DONE]') { syncHistory(); continue; }
+          if (!data || data === '[DONE]') {
+            if (data === '[DONE]') syncHistory();
+            continue;
+          }
           try {
             const parsed = JSON.parse(data);
             if (parsed.imageUrl && !cloudinaryUrl) {
@@ -382,11 +407,16 @@ export default function Home() {
             if (parsed.content) {
               fullResponse += parsed.content;
               setMessages(prev => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last?.role === 'assistant') updated[updated.length - 1] = { ...last, content: fullResponse };
-                return updated;
+                const lastIdx = prev.length - 1;
+                const newMsgs = [...prev];
+                newMsgs[lastIdx] = { ...newMsgs[lastIdx], content: fullResponse };
+                return newMsgs;
               });
+            }
+            if (parsed.title) {
+              setChatHistoryList(prev => prev.map(c => 
+                c.id === sessionId ? { ...c, title: parsed.title } : c
+              ));
             }
           } catch (e) { }
         }
@@ -395,7 +425,9 @@ export default function Home() {
       console.error(e);
       setMessages(prev => {
         const updated = [...prev];
-        updated[updated.length - 1] = { ...updated[updated.length - 1], content: '⚠️ Failed to analyze image.' };
+        if (updated.length > 0) {
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: '⚠️ Error occurred during processing.' };
+        }
         return updated;
       });
     } finally { setIsLoading(false); }
@@ -473,8 +505,9 @@ export default function Home() {
 
   return (
     <main className="flex h-[100dvh] w-full overflow-hidden bg-background text-foreground relative">
-      <ParticleBackground />
+      <ParticleBackground reducedDensity={messages.length > 0} />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.5),rgba(2,6,23,1))] pointer-events-none z-0" />
+      
 
       {/* ── Mobile Sidebar ── */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -496,14 +529,25 @@ export default function Home() {
 
       <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
         {/* ── Mobile Header ── */}
-        <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/5 bg-background/50 backdrop-blur-md">
-          <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-white/40 hover:text-white">
+        <div className="lg:hidden flex items-center justify-between px-4 h-14 pb-[5px] border-b border-white/5 bg-background/50 backdrop-blur-md relative">
+          <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-white/40 hover:text-white relative z-10">
             <Menu className="w-6 h-6" />
           </Button>
-          <span className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-purple">
-            JARVIS
-          </span>
-          <div className="flex items-center gap-2">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm relative group overflow-hidden shadow-[0_0_15px_rgba(0,210,255,0.1)]">
+              {/* Shimmer Effect */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/20 to-transparent -skew-x-12"
+                initial={{ x: '-150%' }}
+                animate={{ x: '150%' }}
+                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+              />
+              <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em] relative z-10 transition-all group-hover:tracking-[0.4em]">
+                JARVIS
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 relative z-10">
             <Button variant="ghost" size="icon" onClick={handleNewChat} className="text-white/40 hover:text-white">
               <Plus className="w-5 h-5" />
             </Button>
@@ -511,11 +555,34 @@ export default function Home() {
         </div>
 
         {/* ── Desktop Header ── */}
-        <div className="hidden lg:flex items-center justify-end px-6 h-14 border-b border-white/5 bg-background/20 backdrop-blur-sm gap-3">
+        <div className="hidden lg:flex items-center justify-center px-6 h-14 pb-[5px] border-b border-white/5 bg-background/20 backdrop-blur-sm relative">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm relative group overflow-hidden shadow-[0_0_15px_rgba(0,210,255,0.1)]">
+              {/* Shimmer Effect */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/20 to-transparent -skew-x-12"
+                initial={{ x: '-150%' }}
+                animate={{ x: '150%' }}
+                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+              />
+              <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em] relative z-10 transition-all group-hover:tracking-[0.4em]">
+                JARVIS
+              </span>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            {/* Any future right-aligned items can go here */}
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col relative overflow-hidden">
-          <ChatInterface messages={messages} isThinking={isLoading} onSuggestionClick={(text) => handleSendMessage(text)} />
+          <ChatInterface 
+            messages={messages} 
+            isThinking={isLoading} 
+            isHistoryLoading={isHistoryLoading}
+            sessionId={sessionId}
+            onSuggestionClick={(text) => handleSendMessage(text)} 
+          />
           <div className="mt-auto">
             <InputPanel
               input={input}
@@ -539,7 +606,7 @@ export default function Home() {
       <AdvancedControls isOpen={isControlsOpen} onClose={() => setIsControlsOpen(false)} />
       <AnalyticsDashboard isOpen={isAnalyticsOpen} onClose={() => setIsAnalyticsOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onSuccess={syncHistory} />
 
       <VoiceModal
         isOpen={isVoiceOpen}

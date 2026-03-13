@@ -35,6 +35,8 @@ interface Message {
 interface ChatInterfaceProps {
     messages: Message[];
     isThinking: boolean;
+    isHistoryLoading?: boolean;
+    sessionId?: string;
     onSuggestionClick?: (text: string) => void;
 }
 
@@ -60,7 +62,7 @@ const THINKING_MESSAGES = [
 ];
 
 // ── ChatInterface Component ───────────────────────────────
-export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatInterfaceProps) => {
+export const ChatInterface = ({ messages, isThinking, isHistoryLoading = false, sessionId, onSuggestionClick }: ChatInterfaceProps) => {
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [autoScroll, setAutoScroll] = useState(true);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -109,13 +111,17 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
     return (
         <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden relative">
             <ScrollArea
-                className="flex-1 px-4 lg:px-8 py-6 no-scrollbar"
+                className="flex-1 px-4 lg:px-8 pb-2 no-scrollbar"
                 onScroll={handleScroll}
+                style={{
+                  maskImage: 'linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%)'
+                }}
             >
-                <div className="max-w-4xl mx-auto space-y-8 pb-0">
+                <div className="max-w-4xl mx-auto space-y-4 pt-32 pb-0">
 
                     {/* ── Empty State ── */}
-                    {messages.length === 0 ? (
+                    {!isHistoryLoading && messages.length === 0 && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -129,11 +135,18 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
 
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                animate={{
+                                    opacity: 1,
+                                    y: 0,
+                                }}
                                 transition={{ delay: 0.4, duration: 0.8 }}
                                 className="mt-4 relative group"
                             >
-                                <h2 className="text-[15px] sm:text-4xl font-light tracking-tight text-white/60 flex flex-row items-center justify-center gap-1.5 sm:gap-3 whitespace-nowrap mb-2">
+                                <motion.h2
+                                    animate={{ opacity: [0.6, 0.8, 0.6] }}
+                                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                                    className="text-[15px] sm:text-4xl font-light tracking-tight text-white/60 flex flex-row items-center justify-center gap-1.5 sm:gap-3 whitespace-nowrap mb-2"
+                                >
                                     <span>What are you</span>
                                     <span className="relative inline-block text-white font-medium italic">
                                         curious
@@ -148,7 +161,7 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                                         />
                                     </span>
                                     <span>about today?</span>
-                                </h2>
+                                </motion.h2>
 
                                 {/* Subtle animated particles or glow under slogan */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-24 -z-10 bg-[radial-gradient(circle,rgba(0,210,255,0.05)_0%,transparent_70%)] rounded-full blur-2xl" />
@@ -165,29 +178,31 @@ export const ChatInterface = ({ messages, isThinking, onSuggestionClick }: ChatI
                                 </motion.div>
                             </motion.div>
                         </motion.div>
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="pt-2 pb-12 hidden sm:flex items-center justify-center"
-                        >
-                            <div className="px-3 py-1 rounded-full border border-white/80 bg-white/5 backdrop-blur-sm">
-                                <span className="text-[10px] font-bold tracking-[0.3em] text-white uppercase pl-[0.3em]">
-                                    JARVIS
-                                </span>
-                            </div>
-                        </motion.div>
                     )}
 
-                    {/* ── Messages ── */}
-                    <AnimatePresence initial={false} mode="wait">
+                    {/* ── Chat Switching Overlay (Non-shifting) ── */}
+                    {isHistoryLoading && (
+                        <div className="absolute inset-0 z-50 flex items-start justify-center pt-40 pointer-events-none">
+                            <div className="bg-[#020617]/40 backdrop-blur-sm px-6 py-3 rounded-full border border-white/5 flex items-center gap-3 shadow-2xl">
+                                <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                                    className="w-4 h-4 border-2 border-[#00D2FF]/20 border-t-[#00D2FF] rounded-full"
+                                />
+                                <p className="text-[10px] font-mono text-white/60 tracking-widest uppercase">Syncing</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Messages Area ── */}
+                    <AnimatePresence mode="wait">
                         <motion.div
-                            key={messages[0]?.id || "empty"}
-                            initial="hidden"
-                            animate="visible"
-                            variants={{
-                                visible: { transition: { staggerChildren: 0.1 } }
-                            }}
+                            key={sessionId || "empty"}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: isHistoryLoading ? 0.3 : 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="space-y-6"
                         >
                             {messages.map((message) => (
                                 <MessageItem key={message.id} message={message} />
@@ -279,7 +294,7 @@ const MessageItem = ({ message }: { message: Message }) => {
             }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className={cn("flex gap-2 sm:gap-3 group scroll-mt-20 my-6", isUser ? "flex-row-reverse" : "flex-row")}
+            className={cn("flex gap-2 sm:gap-3 group scroll-mt-20 mb-6", isUser ? "flex-row-reverse" : "flex-row")}
         >
             {/* ── Avatar ── */}
             <Avatar className={cn(
@@ -299,22 +314,20 @@ const MessageItem = ({ message }: { message: Message }) => {
 
             {/* ── Bubble ── */}
             <div className={cn(
-                "flex flex-col gap-2 max-w-[95%] sm:max-w-[85%]",
+                "flex flex-col gap-2 max-w-[95%] sm:max-w-[85%] min-w-0",
                 isUser ? "items-end" : "items-start"
             )}>
                 <div className={cn(
-                    "relative py-1.5 px-3.5 rounded-xl transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,210,255,0.1)]",
+                    "relative py-3 px-5 rounded-xl transition-all duration-300",
                     isUser
-                        ? "rounded-tr-none bg-blue-600/10 border-blue-500/20 hover:border-blue-500/40 hover:bg-blue-600/15"
+                        ? "rounded-tr-none bg-blue-600/10 border-blue-500/20 hover:border-blue-500/40 hover:bg-blue-600/15 hover:shadow-[0_0_20px_rgba(0,210,255,0.1)]"
                         : "rounded-tl-none bg-white/5 border-white/10 group-hover:border-neon-blue/40 group-hover:bg-white/[0.08]"
                 )}>
                     {/* Glow effects */}
-                    {!isUser && (
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-blue-500/0 rounded-2xl blur opacity-0 group-hover:opacity-40 transition duration-500" />
-                    )}
                     {isUser && (
                         <div className="absolute -inset-0.5 bg-blue-500/0 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500 group-hover:bg-blue-500/10" />
                     )}
+
 
                     {/* ── Image Preview ── */}
                     {message.imageUrl && (
@@ -376,11 +389,11 @@ const MessageItem = ({ message }: { message: Message }) => {
                                                     {match[1]}
                                                 </span>
                                             </div>
-                                            <pre className="!bg-[#0d1117] !p-4 rounded-xl border border-white/5 overflow-x-auto">
-                                                <code className={className} {...props}>
+                                             <pre className="!bg-[#080b12] !p-4 rounded-xl border border-white/5 overflow-x-auto max-h-[500px] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                                <code className={cn(className, "text-[13px] leading-relaxed")} {...props}>
                                                     {children}
                                                 </code>
-                                            </pre>
+                                             </pre>
                                         </div>
                                     ) : (
                                         <code
@@ -433,9 +446,11 @@ const MessageItem = ({ message }: { message: Message }) => {
                         "flex items-center gap-3 mt-1.5 text-[10px] text-white/20 font-mono",
                         isUser ? "justify-end" : "justify-start"
                     )}>
-                        <span className="flex items-center gap-1">
-                            <Clock size={10} /> {message.timestamp}
-                        </span>
+                        {!isUser && (
+                            <span className="flex items-center gap-1">
+                                <Clock size={10} /> {message.timestamp}
+                            </span>
+                        )}
                         {!isUser && message.tokens && (
                             <>
                                 <span className="flex items-center gap-1">

@@ -17,10 +17,10 @@ class Particle {
         this.ctx = ctx;
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 1.5;
-        this.speedX = (Math.random() - 0.5) * 0.5;
-        this.speedY = (Math.random() - 0.5) * 0.5;
-        const colors = ['#3b82f6', '#8b5cf6', '#ffffff'];
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = (Math.random() - 0.5) * 0.8;
+        this.speedY = (Math.random() - 0.5) * 0.8;
+        const colors = ['#00d2ff', '#9d50bb', '#ffffff'];
         this.color = colors[Math.floor(Math.random() * colors.length)];
     }
 
@@ -38,12 +38,24 @@ class Particle {
         this.ctx.beginPath();
         this.ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         this.ctx.fillStyle = this.color;
-        this.ctx.globalAlpha = 0.2;
+        this.ctx.globalAlpha = 0.4;
         this.ctx.fill();
+        
+        // Add a small glow to some particles
+        if (Math.random() > 0.95) {
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = this.color;
+        } else {
+            this.ctx.shadowBlur = 0;
+        }
     }
 }
 
-const ParticleBackground = () => {
+interface ParticleBackgroundProps {
+    reducedDensity?: boolean;
+}
+
+const ParticleBackground = ({ reducedDensity = false }: ParticleBackgroundProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [mounted, setMounted] = useState(false);
 
@@ -61,11 +73,16 @@ const ParticleBackground = () => {
         const resize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            init(); // Re-init on resize to update count
         };
 
         const init = () => {
             particles = [];
-            for (let i = 0; i < 100; i++) {
+            let particleCount = Math.floor((window.innerWidth * window.innerHeight) / 10000);
+            if (reducedDensity) {
+                particleCount = Math.floor(particleCount * 0.15); // 85% reduction
+            }
+            for (let i = 0; i < Math.max(reducedDensity ? 15 : 100, particleCount); i++) {
                 particles.push(new Particle(canvas, ctx));
             }
         };
@@ -74,6 +91,9 @@ const ParticleBackground = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => {
                 p.update();
+                // Drastically lower alpha in reduced mode
+                const originalAlpha = 0.4;
+                ctx.globalAlpha = reducedDensity ? originalAlpha * 0.25 : originalAlpha;
                 p.draw();
             });
             animationFrameId = requestAnimationFrame(animate);
@@ -88,7 +108,7 @@ const ParticleBackground = () => {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, []);
+    }, [reducedDensity]);
 
     if (!mounted) return null;
 

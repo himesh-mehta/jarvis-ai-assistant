@@ -432,9 +432,17 @@ export const Sidebar = React.memo(({
                 <div className="h-14 flex items-center justify-between px-3 flex-shrink-0">
                     {!isCollapsed && (
                         <motion.span
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-purple pl-2"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ 
+                                opacity: 1, 
+                                scale: 1,
+                                filter: ["drop-shadow(0 0 2px rgba(0,210,255,0.3))", "drop-shadow(0 0 8px rgba(0,210,255,0.5))", "drop-shadow(0 0 2px rgba(0,210,255,0.3))"]
+                            }}
+                            transition={{ 
+                                filter: { repeat: Infinity, duration: 4, ease: "easeInOut" },
+                                duration: 0.5 
+                            }}
+                            className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-purple pl-2 drop-shadow-[0_0_10px_rgba(0,210,255,0.2)]"
                         >
                             JARVIS
                         </motion.span>
@@ -568,8 +576,8 @@ export const Sidebar = React.memo(({
                                             className={cn(
                                                 "group flex items-center justify-between gap-2 text-[14px] cursor-pointer py-1.5 px-3 rounded-xl transition-all duration-300 relative overflow-hidden mr-1",
                                                 isActive
-                                                    ? "bg-[#1e293b]/70 text-white font-medium border-l-2 border-jarvis-neon shadow-[inset_4px_0_12px_rgba(0,229,255,0.1)]"
-                                                    : "text-white/50 hover:bg-white/5 hover:text-white"
+                                                    ? "bg-blue-500/10 text-white font-bold border-l-2 border-neon-blue shadow-[0_0_20px_rgba(0,210,255,0.15)] ring-1 ring-white/5"
+                                                    : "text-white/40 hover:text-white hover:bg-white/5"
                                             )}
                                         >
                                             {editingId === chat.id.toString() ? (
@@ -610,10 +618,15 @@ export const Sidebar = React.memo(({
                                                         className="flex-1 min-w-0 flex items-center gap-2"
                                                     >
                                                         {chat.pinned && <Pin className="w-3 h-3 text-neon-blue rotate-45 fill-neon-blue shrink-0" />}
-                                                        <span className="truncate max-w-[105px] text-white/50 group-hover:text-white transition-colors flex items-center gap-1.5">
+                                                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                                             {chat.title.includes('[Reply strictly in ') && <Mic className="w-3 h-3 text-blue-400 shrink-0" />}
-                                                            {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}
-                                                        </span>
+                                                            <span className={cn(
+                                                                "truncate transition-colors",
+                                                                isActive ? "text-white font-bold" : "text-white/50 group-hover:text-white"
+                                                            )}>
+                                                                {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <div className="flex shrink-0 items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300">
                                                         <DropdownMenu>
@@ -998,8 +1011,8 @@ export const Sidebar = React.memo(({
                                                         className={cn(
                                                             "group flex items-center gap-3 sm:gap-6 p-3 sm:p-4 cursor-pointer transition-all duration-300 rounded-[10px] relative overflow-hidden",
                                                             isActive
-                                                                ? "bg-[#1e293b]/70 text-white border-l-[3px] border-jarvis-neon shadow-[inset_6px_0_20px_rgba(0,229,255,0.1)] scale-[1.01]"
-                                                                : "jarvis-card-item opacity-70 hover:opacity-100 hover:bg-[#1e293b]/40"
+                                                                ? "bg-blue-600/15 text-white border-l-[4px] border-neon-blue shadow-[0_0_25px_rgba(0,170,255,0.2),inset_6px_0_20px_rgba(0,229,255,0.1)] scale-[1.02] ring-1 ring-white/10"
+                                                                : "bg-white/[0.02] border border-white/5 opacity-60 hover:opacity-100 hover:bg-white/5"
                                                         )}
                                                         onClick={() => {
                                                             onSelectChat(chat.id.toString(), chat.title);
@@ -1017,7 +1030,9 @@ export const Sidebar = React.memo(({
                                                                     isActive ? "text-white text-shadow-neon" : "text-jarvis-text group-hover:text-white"
                                                                 )}>
                                                                     {chat.title.includes('[Reply strictly in ') && <Mic className="w-3 h-3 text-blue-400 shrink-0" />}
-                                                                    {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}
+                                                                    <span className={cn("truncate", isActive && "font-bold")}>
+                                                                        {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}
+                                                                    </span>
                                                                 </h3>
                                                                 {chat.pinned && (
                                                                     <Pin className="w-3.5 h-3.5 text-jarvis-neon fill-jarvis-neon/20 animate-pulse" />
