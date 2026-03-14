@@ -477,8 +477,10 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <main className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
+      <main className="flex h-screen w-full items-center justify-center bg-background relative overflow-hidden">
+        <ParticleBackground reducedDensity={false} intensity={0.33} />
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.5),rgba(2,6,23,1))] pointer-events-none z-0" />
+        <div className="flex flex-col items-center gap-4 relative z-10">
           <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-white/40 text-sm font-mono">Initializing JARVIS...</p>
         </div>
@@ -505,7 +507,7 @@ export default function Home() {
 
   return (
     <main className="flex h-[100dvh] w-full overflow-hidden bg-background text-foreground relative">
-      <ParticleBackground reducedDensity={messages.length > 0} />
+      <ParticleBackground reducedDensity={messages.length > 0} intensity={0.33} />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.5),rgba(2,6,23,1))] pointer-events-none z-0" />
       
 

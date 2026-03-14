@@ -118,7 +118,7 @@ export const ChatInterface = ({ messages, isThinking, isHistoryLoading = false, 
                   WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%)'
                 }}
             >
-                <div className="max-w-4xl mx-auto space-y-4 pt-32 pb-0">
+                <div className="max-w-4xl mx-auto space-y-4 pt-20 pb-0">
 
                     {/* ── Empty State ── */}
                     {!isHistoryLoading && messages.length === 0 && (
@@ -126,7 +126,7 @@ export const ChatInterface = ({ messages, isThinking, isHistoryLoading = false, 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8 }}
-                            className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4"
+                            className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4"
                         >
 
                             <h1 className="text-5xl sm:text-8xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white/80 to-white/20 select-none drop-shadow-[0_0_40px_rgba(0,210,255,0.2)]">
@@ -143,12 +143,12 @@ export const ChatInterface = ({ messages, isThinking, isHistoryLoading = false, 
                                 className="mt-4 relative group"
                             >
                                 <motion.h2
-                                    animate={{ opacity: [0.6, 0.8, 0.6] }}
+                                    animate={{ opacity: [0.8, 1, 0.8] }}
                                     transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                                    className="text-[15px] sm:text-4xl font-light tracking-tight text-white/60 flex flex-row items-center justify-center gap-1.5 sm:gap-3 whitespace-nowrap mb-2"
+                                    className="text-[15px] sm:text-4xl font-light tracking-tight text-white/80 flex flex-row items-center justify-center gap-1.5 sm:gap-3 whitespace-nowrap mb-2"
                                 >
                                     <span>What are you</span>
-                                    <span className="relative inline-block text-white font-medium italic">
+                                    <span className="relative inline-block text-white font-bold italic drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
                                         curious
                                         <motion.div
                                             className="absolute -bottom-1 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon-blue to-transparent"

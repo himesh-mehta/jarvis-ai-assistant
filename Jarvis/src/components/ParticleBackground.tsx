@@ -24,7 +24,22 @@ class Particle {
         this.color = colors[Math.floor(Math.random() * colors.length)];
     }
 
-    update() {
+    update(mouse: { x: number; y: number }) {
+        // Interaction with mouse
+        if (mouse.x !== 0 && mouse.y !== 0) {
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // If mouse is close, push particles away slightly
+            if (distance < 120) {
+                const forceX = dx / distance;
+                const forceY = dy / distance;
+                this.x -= forceX * 0.5;
+                this.y -= forceY * 0.5;
+            }
+        }
+
         this.x += this.speedX;
         this.y += this.speedY;
 
@@ -38,12 +53,11 @@ class Particle {
         this.ctx.beginPath();
         this.ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         this.ctx.fillStyle = this.color;
-        this.ctx.globalAlpha = 0.4;
         this.ctx.fill();
         
         // Add a small glow to some particles
         if (Math.random() > 0.95) {
-            this.ctx.shadowBlur = 10;
+            this.ctx.shadowBlur = 5;
             this.ctx.shadowColor = this.color;
         } else {
             this.ctx.shadowBlur = 0;
@@ -53,14 +67,22 @@ class Particle {
 
 interface ParticleBackgroundProps {
     reducedDensity?: boolean;
+    intensity?: number;
 }
 
-const ParticleBackground = ({ reducedDensity = false }: ParticleBackgroundProps) => {
+const ParticleBackground = ({ reducedDensity = false, intensity = 1 }: ParticleBackgroundProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [mounted, setMounted] = useState(false);
+    const mouse = useRef({ x: 0, y: 0 });
 
+    // Set mounted on client
     useEffect(() => {
         setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+        
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -70,19 +92,27 @@ const ParticleBackground = ({ reducedDensity = false }: ParticleBackgroundProps)
         let particles: Particle[] = [];
         let animationFrameId: number;
 
+        const handleMouseMove = (e: MouseEvent) => {
+            mouse.current.x = e.clientX;
+            mouse.current.y = e.clientY;
+        };
+
         const resize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            init(); // Re-init on resize to update count
+            init(); 
         };
 
         const init = () => {
             particles = [];
-            let particleCount = Math.floor((window.innerWidth * window.innerHeight) / 10000);
+            let particleCount = Math.floor((window.innerWidth * window.innerHeight) / 15000);
             if (reducedDensity) {
-                particleCount = Math.floor(particleCount * 0.15); // 85% reduction
+                particleCount = Math.floor(particleCount * 0.15);
             }
-            for (let i = 0; i < Math.max(reducedDensity ? 15 : 100, particleCount); i++) {
+            particleCount = Math.floor(particleCount * intensity);
+
+            const minParticles = reducedDensity ? 10 : Math.floor(70 * intensity); 
+            for (let i = 0; i < Math.max(minParticles, particleCount); i++) {
                 particles.push(new Particle(canvas, ctx));
             }
         };
@@ -90,32 +120,34 @@ const ParticleBackground = ({ reducedDensity = false }: ParticleBackgroundProps)
         const animate = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => {
-                p.update();
-                // Drastically lower alpha in reduced mode
-                const originalAlpha = 0.4;
-                ctx.globalAlpha = reducedDensity ? originalAlpha * 0.25 : originalAlpha;
+                p.update(mouse.current);
+                const originalAlpha = 0.3;
+                ctx.globalAlpha = (reducedDensity ? originalAlpha * 0.25 : originalAlpha) * intensity;
                 p.draw();
             });
             animationFrameId = requestAnimationFrame(animate);
         };
 
         window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', handleMouseMove);
+        
         resize();
         init();
         animate();
 
         return () => {
             window.removeEventListener('resize', resize);
+            window.removeEventListener('mousemove', handleMouseMove);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [reducedDensity]);
+    }, [mounted, reducedDensity, intensity]);
 
     if (!mounted) return null;
 
     return (
         <canvas
             ref={canvasRef}
-            className="fixed inset-0 pointer-events-none z-0"
+            className="fixed inset-0 pointer-events-none z-[1]"
             style={{ background: 'transparent' }}
         />
     );

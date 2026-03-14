@@ -9,8 +9,6 @@ import {
   updateProfile,
   signInWithRedirect,
   getRedirectResult,
-  setPersistence,
-  browserLocalPersistence,
   User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -36,10 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const initializeAuth = async () => {
       try {
-        // Force local persistence to ensure login sticks on mobile
-        await setPersistence(auth, browserLocalPersistence);
-        
-        // Handle redirect result for mobile logins
+        // Only handle redirect result if it exists from previous attempts
         const result = await getRedirectResult(auth);
         if (result?.user && isMounted) {
           setUser(result.user);
@@ -68,28 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginWithGoogle = async () => {
-    // Better mobile support for Google login
-    // Some mobile browsers block popups or fail to return state to the opening window.
-    // Redirect is significantly more reliable on mobile devices.
-    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      return await signInWithRedirect(auth, googleProvider);
-    } else {
-      try {
-        return await signInWithPopup(auth, googleProvider);
-      } catch (err: any) {
-        // Fallback for desktop browsers blocking popups
-        if (err.code === 'auth/popup-blocked') {
-          return await signInWithRedirect(auth, googleProvider);
-        }
-        throw err;
+    try {
+      return await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      if (err.code === 'auth/popup-blocked') {
+        return await signInWithRedirect(auth, googleProvider);
       }
+      throw err;
     }
   };
 
   const loginWithEmail = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const res = await signInWithEmailAndPassword(auth, email, password);
+    if (res.user) {
+      setUser(auth.currentUser);
+    }
   };
 
   const registerWithEmail = async (email: string, password: string, displayName: string) => {

@@ -128,6 +128,37 @@ export const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                             className="absolute top-0 left-0 w-full h-[160px] md:h-[180px] bg-[#0f172a] -z-0 pointer-events-none" 
                             style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%)' }}
                         />
+                        
+                        {/* Animated Glowing Orbs (Balls Animation) */}
+                        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                            <motion.div
+                                animate={{
+                                    x: [0, 100, 0],
+                                    y: [0, 50, 0],
+                                    scale: [1, 1.2, 1],
+                                }}
+                                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                                className="absolute -top-10 -left-10 w-40 h-40 bg-neon-blue/20 blur-[60px] rounded-full"
+                            />
+                            <motion.div
+                                animate={{
+                                    x: [0, -80, 0],
+                                    y: [0, 100, 0],
+                                    scale: [1, 1.3, 1],
+                                }}
+                                transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                className="absolute -bottom-20 -right-20 w-60 h-60 bg-purple-500/10 blur-[80px] rounded-full"
+                            />
+                            <motion.div
+                                animate={{
+                                    scale: [1, 1.5, 1],
+                                    opacity: [0.1, 0.3, 0.1],
+                                }}
+                                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-40 bg-blue-400/5 blur-[100px] rounded-full"
+                            />
+                        </div>
+
                         <div className="absolute top-[60px] left-1/2 -translate-x-1/2 w-[200px] h-[80px] bg-[#00D2FF]/10 blur-[40px] z-0 pointer-events-none" />
                         
                         {/* Content Container */}

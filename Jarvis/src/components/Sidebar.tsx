@@ -576,7 +576,7 @@ export const Sidebar = React.memo(({
                                             className={cn(
                                                 "group flex items-center justify-between gap-2 text-[14px] cursor-pointer py-1.5 px-3 rounded-xl transition-all duration-300 relative overflow-hidden mr-1",
                                                 isActive
-                                                    ? "bg-blue-500/10 text-white font-bold border-l-2 border-neon-blue shadow-[0_0_20px_rgba(0,210,255,0.15)] ring-1 ring-white/5"
+                                                    ? "bg-blue-500/10 text-white font-bold shadow-[0_0_20px_rgba(0,210,255,0.15)] ring-1 ring-white/5"
                                                     : "text-white/40 hover:text-white hover:bg-white/5"
                                             )}
                                         >
@@ -621,7 +621,7 @@ export const Sidebar = React.memo(({
                                                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                                             {chat.title.includes('[Reply strictly in ') && <Mic className="w-3 h-3 text-blue-400 shrink-0" />}
                                                             <span className={cn(
-                                                                "truncate transition-colors",
+                                                                "truncate flex-1 min-w-0 transition-all duration-300",
                                                                 isActive ? "text-white font-bold" : "text-white/50 group-hover:text-white"
                                                             )}>
                                                                 {chat.title.replace(/\[Reply strictly in .+? only\]\s*/i, '')}

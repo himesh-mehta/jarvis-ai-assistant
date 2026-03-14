@@ -284,9 +284,7 @@ export const InputPanel = ({
                                             <X className="w-3 h-3" />
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-white/30 mt-1 font-mono">
-                                        📎 File ready · Press send to upload
-                                    </p>
+
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -318,9 +316,7 @@ export const InputPanel = ({
                                             </p>
                                         </div>
                                     </div>
-                                    <p className="text-[10px] text-white/30 mt-1 font-mono">
-                                        📎 Image ready · Add a message or send directly
-                                    </p>
+
                                 </motion.div>
                             )}
                         </AnimatePresence>
