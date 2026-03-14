@@ -1,8 +1,31 @@
 # 🤖 JARVIS — Advanced Intelligence System
 
-JARVIS (Just A Rather Very Intelligent System) is a high-performance, futuristic AI assistant platform. It features a multi-provider "AI Race" engine, real-time memory extraction, web search, and a secure API widget system.
+<div align="center">
 
-![JARVIS Banner](https://images.unsplash.com/photo-1675271591211-126ad94e495d?auto=format&fit=crop&q=80&w=1200)
+  ![JARVIS Banner](https://images.unsplash.com/photo-1675271591211-126ad94e495d?auto=format&fit=crop&q=80&w=1200)
+
+  [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+  [![Tailwind](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+  [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
+  [![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
+
+  **The next generation of AI assistance. Powerful, intelligent, and autonomous.**
+</div>
+
+---
+
+## 📸 Interface Preview
+
+<div align="center">
+  <h3>Futuristic Chat Interface</h3>
+  <img src="Jarvis/public/chat-preview.png" width="800" alt="Chat Preview" />
+  <br/>
+  <h3>Secure API Widget System</h3>
+  <img src="Jarvis/public/widget-preview.png" width="800" alt="Widget Preview" />
+</div>
+
+---
 
 ## 🌟 Key Features
 
@@ -25,60 +48,35 @@ JARVIS (Just A Rather Very Intelligent System) is a high-performance, futuristic
 
 ## 🛠️ Tech Stack
 
-### Core
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 4 + Framer Motion (for futuristic animations)
-
-### Intelligence
+### Intelligence & Search
 - **Providers**: Groq, Google Gemini, Cohere, HuggingFace
-- **Search**: Tavily AI
-- **Embeddings**: HuggingFace (all-MiniLM-L6-v2)
+- **Search Engine**: Tavily AI (Real-time data)
+- **Embeddings**: HuggingFace (all-MiniLM-L6-v2) for Vector RAG
 
-### Backend
-- **Database**: MongoDB (Atlas) + Mongoose
-- **Auth**: Firebase Authentication (with Mobile Redirect Fix)
-- **Server**: Firebase Admin SDK
-- **Storage**: Cloudinary (Image Processing)
+### Backend & Infrastructure
+- **Database**: MongoDB Atlas + Mongoose
+- **Authentication**: Firebase Auth (Optimized for Mobile/Web)
+- **Storage**: Cloudinary (High-speed Image processing)
+- **Realtime**: Node.js + WebSockets
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1. Requirements & Environment
-Create a `.env.local` in the `Jarvis/` directory with the following keys:
+Create a `.env.local` in the `Jarvis/` directory with your API keys.
+
+### 2. Installation & Development
 
 ```bash
-# AI Keys
-GROQ_API_KEY=your_key
-GEMINI_API_KEY=your_key
-COHERE_API_KEY=your_key
-TAVILY_API_KEY=your_key
-HUGGINGFACE_API_KEY=your_key
-
-# Database
-MONGODB_URI=your_mongodb_srv_url
-
-# Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=your_key
-FIREBASE_PROJECT_ID=your_id
-FIREBASE_CLIENT_EMAIL=your_email
-FIREBASE_PRIVATE_KEY="your_key"
-
-# Media
-CLOUDINARY_URL=your_url
-```
-
-### 2. Installation
-```bash
-# Install main workspace dependencies
+# Install dependencies
 npm install
 
-# Run the frontend (Next.js)
+# Start the JARVIS Frontend (Next.js)
 cd Jarvis
 npm run dev
 
-# Run the realtime server
+# Start the Realtime Server
 cd ../realtime-server
 node server.js
 ```
@@ -97,9 +95,11 @@ To embed JARVIS on your own site, use the following snippet:
 
 ---
 
-## 🛡️ Security & Privacy
-- **Stateless API**: Authentication handled via Firebase ID Tokens.
-- **Key Rotation**: Secure API management system included in the Settings dashboard.
-- **Data Protection**: Sensitive environment variables are excluded from the repository.
+## 🛡️ Security
+- **Stateless API**: Authentication handled via Firebase JWT.
+- **Key Security**: Automated key rotation and encryption for the widget system.
+- **Privacy**: Localized data exclusion via `.gitignore` to prevent secret leaks.
 
-Developed with ❤️ for the Next Generation of AI interfaces.
+<div align="center">
+  Developed with ❤️ for the Next Generation of AI interfaces.
+</div>
