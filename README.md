@@ -8,6 +8,8 @@
   [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
   [![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
 
+  [**🚀 Live Demo**](https://jarvis-ai-assistant-jarvis.vercel.app/)
+
   **The next generation of AI assistance. Powerful, intelligent, and autonomous.**
 </div>
 
