@@ -17,10 +17,10 @@
 
 <div align="center">
   <h3>Futuristic Chat Interface</h3>
-  <img src="Jarvis/public/chat-preview.png" width="800" alt="Chat Preview" />
+  <img src="Jarvis/public/chat-preview.png" width="700" alt="Chat Preview" />
   <br/>
   <h3>Secure API Widget System</h3>
-  <img src="Jarvis/public/widget-preview.png" width="800" alt="Widget Preview" />
+  <img src="Jarvis/public/widget-preview.png" width="700" alt="Widget Preview" />
 </div>
 
 ---
