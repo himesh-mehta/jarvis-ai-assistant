@@ -42,6 +42,7 @@ Thumbs.db
 tsconfig.tsbuildinfo
 .expo/
 
-# Test files (if you want them ignored)
-test_*.js
+# Test files
+/test_*.js
+/Jarvis/test_*.js
 test_services.js
