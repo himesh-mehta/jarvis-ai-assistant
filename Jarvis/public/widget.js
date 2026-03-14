@@ -18,7 +18,7 @@
   const placeholder = (script && script.getAttribute('data-placeholder'))
                   || global.placeholder || 'Ask me anything...';
 
-  const BASE_URL = 'https://jarvis-ten-gray.vercel.app';
+  const BASE_URL = 'https://jarvis-ai-assistant-jarvis.vercel.app';
 
   // ── Build iframe URL ────────────────────────────────
   const params = new URLSearchParams({
