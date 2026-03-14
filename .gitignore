@@ -1,12 +1,12 @@
 # dependencies
 node_modules/
-/frontend/node_modules/
+/Jarvis/node_modules/
 /realtime-server/node_modules/
-/jarvis-mobile/node_modules/
+/mobile-app/node_modules/
 
 # Next.js
 .next/
-/frontend/.next/
+/Jarvis/.next/
 out/
 
 # Production

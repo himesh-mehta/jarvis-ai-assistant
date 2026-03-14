@@ -17,7 +17,7 @@ JARVIS (Just A Rather Very Intelligent System) is a high-performance, futuristic
 
 ```text
 .
-├── frontend/           # Next.js 15 Web Application (UI, State, API Routes)
+├── Jarvis/             # Next.js 15 Web Application (UI, State, API Routes)
 ├── realtime-server/    # Node.js WebSocket Server for live interactions
 ├── public/             # Static assets including the embeddable widget.js
 └── .gitignore          # Intelligent exclusion of sensitive and build files
@@ -46,7 +46,7 @@ JARVIS (Just A Rather Very Intelligent System) is a high-performance, futuristic
 ## 🚀 Getting Started
 
 ### 1. Requirements & Environment
-Create a `.env.local` in the `frontend/` directory with the following keys:
+Create a `.env.local` in the `Jarvis/` directory with the following keys:
 
 ```bash
 # AI Keys
@@ -75,7 +75,7 @@ CLOUDINARY_URL=your_url
 npm install
 
 # Run the frontend (Next.js)
-cd frontend
+cd Jarvis
 npm run dev
 
 # Run the realtime server
