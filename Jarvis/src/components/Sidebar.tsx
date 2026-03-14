@@ -1181,7 +1181,7 @@ export const Sidebar = React.memo(({
                                     transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                                     className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-blue tracking-tighter whitespace-nowrap drop-shadow-[0_0_15px_rgba(0,210,255,0.5)]"
                                 >
-                                    AMAN BC
+                                    Coming Soon
                                 </motion.div>
                             </div>
                             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(0,170,255,0.15)_0%,transparent_70%)]" />
