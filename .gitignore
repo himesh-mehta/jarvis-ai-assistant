@@ -1,21 +1,47 @@
 # dependencies
 node_modules/
-.venv/
-venv/
-env/
+/frontend/node_modules/
+/realtime-server/node_modules/
+/jarvis-mobile/node_modules/
 
-# env files
-.env
-.env.*
+# Next.js
+.next/
+/frontend/.next/
+out/
 
-# logs
+# Production
+build/
+dist/
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 build_errors.log
+build_log.txt
+build_output.txt
+dev_log.txt
 
-# IDE
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# IDE and OS
 .vscode/
 .idea/
-
-# OS files
 .DS_Store
 Thumbs.db
+*.swp
+
+# Build artifacts
+tsconfig.tsbuildinfo
+.expo/
+
+# Test files (if you want them ignored)
+test_*.js
+test_services.js
