@@ -46,3 +46,7 @@ tsconfig.tsbuildinfo
 /test_*.js
 /Jarvis/test_*.js
 test_services.js
+
+# Mobile App
+mobile-app/
+jarvis-mobile/
