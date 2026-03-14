@@ -1,0 +1,15 @@
+export const Colors = {
+  background: '#020617',
+  card:       '#0f172a',
+  border:     'rgba(255, 255, 255, 0.1)',
+  neonBlue:   '#00D2FF',
+  neonPurple: '#9D50BB',
+  jarvisNeon: '#00E5FF',
+  white:      '#F8FAFC',
+  muted:      '#64748B',
+  mutedLight: 'rgba(255, 255, 255, 0.05)',
+  success:    '#22C55E',
+  error:      '#EF4444',
+  glass:      'rgba(255, 255, 255, 0.03)',
+  glassBorder: 'rgba(255, 255, 255, 0.1)',
+};

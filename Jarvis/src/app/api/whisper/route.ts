@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
+import Groq from 'groq-sdk/index.mjs';
 import admin from '@/lib/firebase-admin';
 
 // Force dynamic to prevent 404/caching on some serverless environments
