@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    AlertCircle, X, Eye, EyeOff, CheckCircle2
+    AlertCircle, X, Eye, EyeOff, CheckCircle2, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +105,25 @@ export const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
             } else {
                 setError(err.message || "Google login failed.");
             }
+        } finally {
+            setIsLoadingLocal(false);
+        }
+    };
+
+    const handleDemoLogin = async () => {
+        if (isLoadingLocal || showSuccess) return;
+        setIsLoadingLocal(true);
+        setError("");
+        try {
+            await loginWithEmail("demo@jarvis.com", "demo123456");
+            if (onSuccess) onSuccess();
+            setShowSuccess(true);
+            setTimeout(() => {
+                if (isOpen) onClose();
+            }, 1000);
+        } catch (err: any) {
+            console.error("Demo Login Error:", err);
+            setError(err.message || "Demo login failed.");
         } finally {
             setIsLoadingLocal(false);
         }
@@ -286,6 +305,16 @@ export const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                                                 <span className="bg-[#020617] px-3 text-[#64748B] tracking-[1.5px]">Or continue with</span>
                                             </div>
                                         </div>
+
+                                        {/* Demo Mode Option */}
+                                        <button
+                                            onClick={handleDemoLogin}
+                                            disabled={isLoadingLocal}
+                                            className="w-full h-11 md:h-12 bg-gradient-to-r from-[#00D2FF]/10 to-purple-500/10 border border-[#00D2FF]/20 text-white hover:from-[#00D2FF]/20 hover:to-purple-500/20 rounded-xl flex items-center justify-center gap-2.5 transition-all mb-2 font-semibold text-sm shadow-[0_0_15px_rgba(0,210,255,0.1)] hover:shadow-[0_0_20px_rgba(0,210,255,0.2)]"
+                                        >
+                                            <Sparkles className="w-4 h-4 text-[#00D2FF]" />
+                                            Try Demo Mode
+                                        </button>
 
                                         {/* Google Login Option */}
                                         <button

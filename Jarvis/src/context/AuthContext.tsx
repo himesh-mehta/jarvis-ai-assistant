@@ -9,6 +9,7 @@ import {
   updateProfile,
   signInWithRedirect,
   getRedirectResult,
+  signInAnonymously,
   User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerWithEmail = async (email: string, password: string, displayName: string) => {
     const res = await createUserWithEmailAndPassword(auth, email, password);
     if (res.user) {
-      await updateProfile(res.user, { displayName });
+      await updateProfile(res.user, { displayName: displayName || "Demo User" });
       // Reload user to get updated profile
       await res.user.reload();
       setUser(auth.currentUser);
